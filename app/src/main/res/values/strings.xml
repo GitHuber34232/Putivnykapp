@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Путівник</string>
+    <string name="map_screen_title">Карта Києва</string>
+    <string name="places_screen_title">Цікаві місця</string>
+    <string name="routes_screen_title">Маршрути</string>
+    <string name="settings_screen_title">Налаштування</string>
+    <string name="loading">Завантаження…</string>
+    <string name="error_loading_map">Помилка завантаження карти</string>
+    <string name="no_location_permission">Для роботи додатку потрібен доступ до геолокації</string>
+</resources>

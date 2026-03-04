@@ -1,0 +1,175 @@
+[
+  {
+    "id": 104,
+    "name": "Ресторан Канапа",
+    "name_en": "Kanapa Restaurant",
+    "latitude": 50.4598,
+    "longitude": 30.5188,
+    "category": "restaurant",
+    "tags": [
+      "поділ",
+      "українська кухня",
+      "вечеря"
+    ],
+    "description": "Популярний ресторан сучасної української кухні.",
+    "rating": 4.6,
+    "popularity": 83,
+    "river_bank": "right",
+    "visitDuration": 90,
+    "imageUrls": [
+      "https://live.staticflickr.com/65535/53487163997_a8b96f3845_b.jpg",
+      "https://live.staticflickr.com/5542/30966956695_5ea3257a60_b.jpg"
+    ]
+  },
+  {
+    "id": 106,
+    "name": "Видубицький монастир",
+    "name_en": "Vydubychi Monastery",
+    "latitude": 50.4119,
+    "longitude": 30.5487,
+    "category": "monastery",
+    "tags": [
+      "монастир",
+      "печерськ",
+      "панорама"
+    ],
+    "description": "Історичний монастирський комплекс із краєвидами на Дніпро.",
+    "rating": 4.7,
+    "popularity": 78,
+    "river_bank": "right",
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/%D0%92%D0%B8%D0%B4%D1%83%D0%B1%D0%B8%D1%86%D1%8C%D0%BA%D0%B8%D0%B9_%D0%BC%D0%BE%D0%BD%D0%B0%D1%81%D1%82%D0%B8%D1%80-3.JPG/960px-%D0%92%D0%B8%D0%B4%D1%83%D0%B1%D0%B8%D1%86%D1%8C%D0%BA%D0%B8%D0%B9_%D0%BC%D0%BE%D0%BD%D0%B0%D1%81%D1%82%D0%B8%D1%80-3.JPG",
+      "https://live.staticflickr.com/3951/15433323759_e196d03e82_b.jpg"
+    ]
+  },
+  {
+    "id": 107,
+    "name": "Будинок з химерами",
+    "name_en": "House with Chimaeras",
+    "latitude": 50.4453,
+    "longitude": 30.5316,
+    "category": "architecture_monument",
+    "tags": [
+      "архітектура",
+      "арт-нуво",
+      "банкова"
+    ],
+    "description": "Унікальна модернова архітектурна пам'ятка.",
+    "rating": 4.7,
+    "popularity": 88,
+    "river_bank": "right",
+    "visitDuration": 45,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/%D0%91%D1%83%D0%B4%D0%B8%D0%BD%D0%BE%D0%BA_%D1%96%D0%B7_%D1%85%D0%B8%D0%BC%D0%B5%D1%80%D0%B0%D0%BC%D0%B8-3.JPG/960px-%D0%91%D1%83%D0%B4%D0%B8%D0%BD%D0%BE%D0%BA_%D1%96%D0%B7_%D1%85%D0%B8%D0%BC%D0%B5%D1%80%D0%B0%D0%BC%D0%B8-3.JPG",
+      "https://live.staticflickr.com/65535/50141673142_a429cae355_b.jpg"
+    ]
+  },
+  {
+    "id": 109,
+    "name": "Хрещатик",
+    "name_en": "Khreshchatyk Street",
+    "latitude": 50.4477,
+    "longitude": 30.5228,
+    "category": "street",
+    "tags": [
+      "центр",
+      "прогулянка",
+      "шопінг"
+    ],
+    "description": "Головна вулиця столиці.",
+    "rating": 4.6,
+    "popularity": 95,
+    "river_bank": "right",
+    "visitDuration": 60,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Khreshchatyk.jpg/960px-Khreshchatyk.jpg",
+      "https://live.staticflickr.com/65535/51938766280_22b7af3f2b_b.jpg"
+    ]
+  },
+  {
+    "id": 110,
+    "name": "Район Оболонь",
+    "name_en": "Obolon District",
+    "latitude": 50.5092,
+    "longitude": 30.4982,
+    "category": "district",
+    "tags": [
+      "оболонь",
+      "житловий район",
+      "набережна"
+    ],
+    "description": "Популярний район із виходом до Дніпра.",
+    "rating": 4.4,
+    "popularity": 74,
+    "river_bank": "right",
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Bank_of_the_Dnieper_River_in_the_Obolon_area._Kiev%2C_Ukraine.jpg/960px-Bank_of_the_Dnieper_River_in_the_Obolon_area._Kiev%2C_Ukraine.jpg",
+      "https://live.staticflickr.com/8154/7523072208_6b461ce9fc_b.jpg"
+    ]
+  },
+  {
+    "id": 111,
+    "name": "НСК Олімпійський",
+    "name_en": "Olympic National Sports Complex",
+    "latitude": 50.4334,
+    "longitude": 30.5216,
+    "category": "stadium",
+    "tags": [
+      "спорт",
+      "стадіон",
+      "події"
+    ],
+    "description": "Головний стадіон країни.",
+    "rating": 4.7,
+    "popularity": 90,
+    "river_bank": "right",
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Olimpiysky_Stadium%2C_Kiev_-_panoramio.jpg/960px-Olimpiysky_Stadium%2C_Kiev_-_panoramio.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Kyiv_NSC_Olimpiyskyi_1.jpg/960px-Kyiv_NSC_Olimpiyskyi_1.jpg"
+    ]
+  },
+  {
+    "id": 115,
+    "name": "ТРЦ River Mall (орієнтир)",
+    "name_en": "River Mall",
+    "latitude": 50.3923,
+    "longitude": 30.6169,
+    "category": "famous_place",
+    "tags": [
+      "осокорки",
+      "шопінг",
+      "лівий берег"
+    ],
+    "description": "Популярний орієнтир і зона для дозвілля на лівому березі.",
+    "rating": 4.6,
+    "popularity": 87,
+    "river_bank": "left",
+    "visitDuration": 100,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Stairs_to_River_Mall.jpg/960px-Stairs_to_River_Mall.jpg",
+      "https://live.staticflickr.com/65535/50687970566_ac9fcee042_b.jpg"
+    ]
+  },
+  {
+    "id": 116,
+    "name": "Громадський туалет біля Майдану",
+    "name_en": "Public Toilet near Maidan",
+    "latitude": 50.4503,
+    "longitude": 30.5239,
+    "category": "toilet",
+    "tags": [
+      "wc",
+      "туалет",
+      "центр"
+    ],
+    "description": "Доступний санітарний пункт у центральній частині міста.",
+    "rating": 4.0,
+    "popularity": 35,
+    "river_bank": "right",
+    "visitDuration": 10,
+    "imageUrls": []
+  }
+]

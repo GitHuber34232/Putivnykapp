@@ -1,0 +1,27 @@
+{
+  "name": "putivnyk-api",
+  "version": "1.0.0",
+  "description": "Backend API for Putivnyk — Kyiv walking tour guide",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "kyiv",
+    "tours",
+    "events",
+    "api"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "compression": "^1.7.5",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "helmet": "^8.0.0"
+  }
+}

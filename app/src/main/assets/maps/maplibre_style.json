@@ -1,0 +1,27 @@
+{
+  "version": 8,
+  "name": "Putivnyk Basic",
+  "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  "metadata": {
+    "description": "Local style document for MapLibre in Putivnyk"
+  },
+  "sources": {
+    "osm": {
+      "type": "raster",
+      "tiles": [
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "attribution": "© OpenStreetMap contributors"
+    }
+  },
+  "layers": [
+    {
+      "id": "osm-raster",
+      "type": "raster",
+      "source": "osm",
+      "minzoom": 0,
+      "maxzoom": 22
+    }
+  ]
+}
