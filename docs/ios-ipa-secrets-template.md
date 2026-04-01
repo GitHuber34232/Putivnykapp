@@ -29,24 +29,35 @@
 
 Є helper script [setup-and-build-ipa-ubuntu.sh](scripts/ios/setup-and-build-ipa-ubuntu.sh), який:
 
-1. один раз запитає пароль до `.p12`
-2. сам витягне `IOS_TEAM_ID`, `IOS_PROVISIONING_PROFILE_NAME`, `IOS_BUNDLE_IDENTIFIER`, `IOS_CODE_SIGN_IDENTITY`
-3. заллє всі GitHub secrets через `gh secret set`
-4. за потреби зробить `git push`
-5. запустить workflow `ios-ipa.yml`
+1. сам поставить `gh`, `openssl`, `python3`, `coreutils`, `git` через `apt-get`, якщо чогось бракує
+2. якщо треба, запустить `gh auth login`
+3. працює без прапорців і без prompt-ів по шляхах
+4. сам витягне `IOS_TEAM_ID`, `IOS_PROVISIONING_PROFILE_NAME`, `IOS_BUNDLE_IDENTIFIER`, `IOS_CODE_SIGN_IDENTITY`
+5. заллє всі GitHub secrets через `gh secret set`
+6. оновить `origin` на чистий `https://github.com/owner/repo.git`, щоб не впертися в старий PAT без `workflow` scope
+7. зробить `git push`, створить tag і запустить workflow `ios-ipa.yml`
 
-Приклад:
+Запуск без параметрів:
 
 ```bash
-./scripts/ios/setup-and-build-ipa-ubuntu.sh \
-  --repo owner/repo \
-  --p12 ~/signing/ios_distribution.p12 \
-  --profile ~/signing/Putivnyk.mobileprovision \
-  --export-method ad-hoc \
-  --tag v1.0.0-ios
+./scripts/ios/setup-and-build-ipa-ubuntu.sh
 ```
 
-Потрібні пакети на Ubuntu: `git`, `gh`, `openssl`, `python3`, `base64`.
+Дефолтні шляхи:
+
+- `.p12`: `~/ios/signing_certificate.p12`
+- `.mobileprovision`: `~/ios/Putivnyk.mobileprovision`
+- repo: `GitHuber34232/Putivnykapp`
+- tag: `v<MARKETING_VERSION>-ios`, зараз це `v1.0.0-ios`
+- export method: `ad-hoc`
+
+Обов'язково перед запуском:
+
+```bash
+export IOS_P12_PASSWORD='ваш_пароль_до_p12'
+```
+
+Якщо потрібно, дефолти можна перевизначити через environment variables: `GITHUB_REPOSITORY`, `IOS_P12_PATH`, `IOS_PROFILE_PATH`, `IOS_P12_PASSWORD`, `IOS_GIT_TAG`, `IPA_EXPORT_METHOD`.
 
 ## Як отримати base64 на macOS
 

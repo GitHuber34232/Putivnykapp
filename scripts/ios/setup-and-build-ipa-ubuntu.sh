@@ -2,77 +2,24 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "$0")/../.." && pwd -P)
-REPO=${GITHUB_REPOSITORY:-}
+DEFAULT_REPO="GitHuber34232/Putivnykapp"
+DEFAULT_P12_PATH="$HOME/ios/signing_certificate.p12"
+DEFAULT_PROFILE_PATH="$HOME/ios/Putivnyk.mobileprovision"
+REPO=${GITHUB_REPOSITORY:-$DEFAULT_REPO}
 EXPORT_METHOD=${IPA_EXPORT_METHOD:-ad-hoc}
-P12_PATH=${IOS_P12_PATH:-}
-PROFILE_PATH=${IOS_PROFILE_PATH:-}
+P12_PATH=${IOS_P12_PATH:-$DEFAULT_P12_PATH}
+PROFILE_PATH=${IOS_PROFILE_PATH:-$DEFAULT_PROFILE_PATH}
 P12_PASSWORD=${IOS_P12_PASSWORD:-}
-TAG_NAME=${IOS_GIT_TAG:-}
-AUTO_PUSH=${IOS_AUTO_PUSH:-1}
-AUTO_TRIGGER=${IOS_AUTO_TRIGGER:-1}
 
-usage() {
-  cat <<EOF
-Usage:
-  $(basename "$0") --p12 /path/cert.p12 --profile /path/profile.mobileprovision [options]
-
-Options:
-  --repo owner/repo             GitHub repository; defaults to GITHUB_REPOSITORY or git remote
-  --p12 PATH                    Signing certificate .p12 file
-  --profile PATH                Provisioning profile .mobileprovision file
-  --export-method METHOD        development|ad-hoc|app-store|enterprise (default: ad-hoc)
-  --tag TAG                     Create and push tag before triggering workflow
-  --no-push                     Do not git push local changes
-  --no-trigger                  Do not dispatch the workflow after secrets are uploaded
-  --help                        Show this help
-
-Environment overrides:
-  IOS_P12_PATH, IOS_PROFILE_PATH, IOS_P12_PASSWORD, IPA_EXPORT_METHOD,
-  GITHUB_REPOSITORY, IOS_GIT_TAG, IOS_AUTO_PUSH, IOS_AUTO_TRIGGER
-EOF
+resolve_default_tag() {
+  local marketing_version
+  marketing_version=$(sed -n 's/.*MARKETING_VERSION: "\([^"]*\)".*/\1/p' "$ROOT_DIR/iosApp/project.yml" | head -n 1)
+  if [ -n "$marketing_version" ]; then
+    printf 'v%s-ios' "$marketing_version"
+  else
+    printf 'v1.0.0-ios'
+  fi
 }
-
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --repo)
-      REPO="$2"
-      shift 2
-      ;;
-    --p12)
-      P12_PATH="$2"
-      shift 2
-      ;;
-    --profile)
-      PROFILE_PATH="$2"
-      shift 2
-      ;;
-    --export-method)
-      EXPORT_METHOD="$2"
-      shift 2
-      ;;
-    --tag)
-      TAG_NAME="$2"
-      shift 2
-      ;;
-    --no-push)
-      AUTO_PUSH=0
-      shift
-      ;;
-    --no-trigger)
-      AUTO_TRIGGER=0
-      shift
-      ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown argument: $1" >&2
-      usage
-      exit 1
-      ;;
-  esac
-done
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -81,38 +28,84 @@ require_cmd() {
   fi
 }
 
-for cmd in git gh openssl python3 base64; do
+install_dependencies() {
+  local missing=0
+
+  for cmd in git gh openssl python3 base64; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      missing=1
+      break
+    fi
+  done
+
+  if [ "$missing" = "0" ]; then
+    return
+  fi
+
+  if ! command -v apt-get >/dev/null 2>&1; then
+    echo "apt-get not found. This script expects Ubuntu/Debian with apt." >&2
+    exit 1
+  fi
+
+  echo "Installing required packages via apt-get..."
+  sudo apt-get update
+  sudo apt-get install -y gh openssl python3 coreutils git
+}
+
+ensure_github_auth() {
+  if gh auth status >/dev/null 2>&1; then
+    gh auth setup-git >/dev/null 2>&1 || true
+    return
+  fi
+
+  echo "GitHub CLI is not authenticated. Starting gh auth login..."
+  gh auth login --hostname github.com --git-protocol https --web
+  gh auth setup-git >/dev/null 2>&1 || true
+}
+
+normalize_origin_remote() {
+  local desired_url="https://github.com/$REPO.git"
+  local current_url
+
+  current_url=$(git -C "$ROOT_DIR" remote get-url origin 2>/dev/null || true)
+  if [ -z "$current_url" ]; then
+    return
+  fi
+
+  if [ "$current_url" != "$desired_url" ] && printf '%s' "$current_url" | grep -qi 'github\.com'; then
+    git -C "$ROOT_DIR" remote set-url origin "$desired_url"
+  fi
+}
+
+install_dependencies
+
+for cmd in git gh openssl python3 base64 sed mktemp; do
   require_cmd "$cmd"
 done
 
-if [ -z "$REPO" ]; then
-  remote_url=$(git -C "$ROOT_DIR" remote get-url origin 2>/dev/null || true)
-  if [ -n "$remote_url" ]; then
-    REPO=$(printf '%s' "$remote_url" | sed -E 's#(https://[^/]+/|git@[^:]+:)([^/.]+/[^/.]+)(\.git)?#\2#')
-  fi
-fi
+ensure_github_auth
+TAG_NAME=${IOS_GIT_TAG:-$(resolve_default_tag)}
 
 if [ -z "$REPO" ]; then
-  echo "Cannot determine GitHub repository. Pass --repo owner/repo or set GITHUB_REPOSITORY." >&2
+  echo "Cannot determine GitHub repository. Set GITHUB_REPOSITORY or update DEFAULT_REPO in this script." >&2
   exit 1
 fi
 
 if [ -z "$P12_PATH" ] || [ ! -f "$P12_PATH" ]; then
-  echo "Provide a valid --p12 path to your signing certificate." >&2
+  echo "Signing certificate not found: $P12_PATH" >&2
+  echo "Place the file there or override with IOS_P12_PATH." >&2
   exit 1
 fi
 
 if [ -z "$PROFILE_PATH" ] || [ ! -f "$PROFILE_PATH" ]; then
-  echo "Provide a valid --profile path to your provisioning profile." >&2
+  echo "Provisioning profile not found: $PROFILE_PATH" >&2
+  echo "Place the file there or override with IOS_PROFILE_PATH." >&2
   exit 1
 fi
 
 if [ -z "$P12_PASSWORD" ]; then
-  printf 'P12 password: ' >&2
-  stty -echo
-  read -r P12_PASSWORD
-  stty echo
-  printf '\n' >&2
+  echo "IOS_P12_PASSWORD is not set. Export it before running this script." >&2
+  exit 1
 fi
 
 TMP_DIR=$(mktemp -d)
@@ -181,6 +174,8 @@ fi
 P12_BASE64=$(base64 -w 0 "$P12_PATH")
 PROFILE_BASE64=$(base64 -w 0 "$PROFILE_PATH")
 
+normalize_origin_remote
+
 echo "Uploading GitHub secrets to $REPO..."
 printf '%s' "$P12_BASE64" | gh secret set IOS_CERTIFICATE_P12_BASE64 --repo "$REPO" --body -
 printf '%s' "$P12_PASSWORD" | gh secret set IOS_CERTIFICATE_PASSWORD --repo "$REPO" --body -
@@ -195,21 +190,23 @@ echo "  IOS_PROVISIONING_PROFILE_NAME=$PROFILE_NAME"
 echo "  IOS_TEAM_ID=$TEAM_ID"
 echo "  IOS_BUNDLE_IDENTIFIER=$BUNDLE_ID"
 echo "  IOS_CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+echo "  IPA_EXPORT_METHOD=$EXPORT_METHOD"
+echo "  TAG_NAME=$TAG_NAME"
 
-if [ "$AUTO_PUSH" = "1" ]; then
-  git -C "$ROOT_DIR" push
+if [ -n "$(git -C "$ROOT_DIR" status --short)" ]; then
+  echo "Working tree is dirty. Commit or stash changes before running this script." >&2
+  exit 1
 fi
 
-if [ -n "$TAG_NAME" ]; then
-  if ! git -C "$ROOT_DIR" rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-    git -C "$ROOT_DIR" tag "$TAG_NAME"
-  fi
-  git -C "$ROOT_DIR" push origin "$TAG_NAME"
-fi
+echo "Pushing current branch to origin..."
+git -C "$ROOT_DIR" push origin HEAD
 
-if [ "$AUTO_TRIGGER" = "1" ]; then
-  gh workflow run ios-ipa.yml --repo "$REPO" -f export_method="$EXPORT_METHOD"
-  echo "Triggered ios-ipa.yml with export_method=$EXPORT_METHOD"
+if ! git -C "$ROOT_DIR" rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+  git -C "$ROOT_DIR" tag "$TAG_NAME"
 fi
+git -C "$ROOT_DIR" push origin "$TAG_NAME"
+
+gh workflow run ios-ipa.yml --repo "$REPO" -f export_method="$EXPORT_METHOD"
+echo "Triggered ios-ipa.yml with export_method=$EXPORT_METHOD"
 
 echo "Done. Watch artifacts in: https://github.com/$REPO/actions"

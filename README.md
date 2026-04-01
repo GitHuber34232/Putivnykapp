@@ -56,12 +56,13 @@ Kotlin Multiplatform-проєкт для самостійних прогулян
 - Workflow `iOS IPA` також запускається автоматично по тегах `v*`, `ios-v*` і по published release.
 - Для signed IPA потрібно додати secrets: `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `IOS_PROVISIONING_PROFILE_NAME`, `IOS_TEAM_ID`, `IOS_BUNDLE_IDENTIFIER`, `IOS_CODE_SIGN_IDENTITY`.
 - Після запуску workflow готовий `.ipa` буде прикріплений як GitHub Actions artifact.
+- На Ubuntu достатньо покласти `~/ios/signing_certificate.p12` і `~/ios/Putivnyk.mobileprovision`, експортувати `IOS_P12_PASSWORD`, після чого запустити `./scripts/ios/setup-and-build-ipa-ubuntu.sh` без параметрів.
 
 Додатково:
 - Готовий шаблон secrets лежить у [docs/ios-ipa-secrets-template.md](docs/ios-ipa-secrets-template.md).
 - Для macOS-friendly onboarding додано `Makefile` і helper scripts у [scripts/ios](scripts/ios).
 - Для dispatch IPA workflow з Windows додано [scripts/ios/Dispatch-Ipa.ps1](scripts/ios/Dispatch-Ipa.ps1).
-- Для Ubuntu додано [scripts/ios/setup-and-build-ipa-ubuntu.sh](scripts/ios/setup-and-build-ipa-ubuntu.sh), який сам готує secrets і запускає IPA build.
+- Для Ubuntu додано [scripts/ios/setup-and-build-ipa-ubuntu.sh](scripts/ios/setup-and-build-ipa-ubuntu.sh), який сам ставить залежності, виконує `gh auth login`, готує secrets, пушить branch/tag і запускає IPA build без CLI-параметрів.
 
 ## Автор
 Розроблено з любов'ю до Києва. Всі права захищено.

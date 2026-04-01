@@ -26,7 +26,7 @@ make build-ios-sim
 
 Signed IPA локально вимагає macOS + Xcode + Apple signing assets.
 Якщо працюєте з Windows, використовуйте GitHub Actions workflow `iOS IPA`.
-Для Ubuntu використовуйте `./scripts/ios/setup-and-build-ipa-ubuntu.sh`.
+Для Ubuntu використовуйте `./scripts/ios/setup-and-build-ipa-ubuntu.sh` без параметрів: він сам поставить залежності, перевірить `gh auth`, візьме `~/ios/signing_certificate.p12` і `~/ios/Putivnyk.mobileprovision`, вимагатиме лише `IOS_P12_PASSWORD` в environment, після чого пушне tag та запустить workflow.
 
 ### Remote IPA dispatch
 
