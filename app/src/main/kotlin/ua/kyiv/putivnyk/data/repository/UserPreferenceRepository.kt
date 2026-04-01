@@ -11,21 +11,26 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class UserPreferenceRepository @Inject constructor(
+class RoomUserPreferenceRepository @Inject constructor(
     private val userPreferenceDao: UserPreferenceDao
-) {
+) : UserPreferenceRepository {
+    override
     fun observeAll(): Flow<List<UserPreference>> =
         userPreferenceDao.observeAll().map { list -> list.map { it.toDomain() } }
 
+    override
     fun observeAsMap(): Flow<Map<String, String>> =
         observeAll().map { list -> list.associate { it.key to it.value } }
 
+    override
     suspend fun getByKey(key: String): UserPreference? =
         userPreferenceDao.getByKey(key)?.toDomain()
 
-    suspend fun getString(key: String, defaultValue: String = ""): String =
+    override
+    suspend fun getString(key: String, defaultValue: String): String =
         getByKey(key)?.value ?: defaultValue
 
+    override
     suspend fun upsert(key: String, value: String) {
         userPreferenceDao.upsert(
             UserPreference(
@@ -36,13 +41,16 @@ class UserPreferenceRepository @Inject constructor(
         )
     }
 
+    override
     suspend fun deleteByKey(key: String) {
         userPreferenceDao.deleteByKey(key)
     }
 
+    override
     suspend fun getAllAsMap(): Map<String, String> =
         observeAll().first().associate { it.key to it.value }
 
+    override
     suspend fun clearAll() {
         userPreferenceDao.clearAll()
     }

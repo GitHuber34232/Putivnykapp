@@ -4,13 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.first
+import java.util.Locale
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.RoutePoint
@@ -20,17 +22,15 @@ import ua.kyiv.putivnyk.data.repository.RouteRepository
 import ua.kyiv.putivnyk.data.repository.SyncStateRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteMetricsCalculator
-import ua.kyiv.putivnyk.i18n.OnDeviceTranslationService
 import ua.kyiv.putivnyk.i18n.SupportedLanguages
-import javax.inject.Inject
-import java.util.Locale
+import ua.kyiv.putivnyk.i18n.TranslationService
 
 @HiltViewModel
 class LocationDetailsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val placeRepository: PlaceRepository,
     private val localizationRepository: LocalizationRepository,
-    private val translationService: OnDeviceTranslationService,
+    private val translationService: TranslationService,
     private val routeRepository: RouteRepository,
     private val userPreferenceRepository: UserPreferenceRepository,
     private val syncStateRepository: SyncStateRepository

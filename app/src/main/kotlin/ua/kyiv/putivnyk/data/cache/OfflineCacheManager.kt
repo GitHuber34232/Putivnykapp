@@ -1,50 +1,44 @@
 package ua.kyiv.putivnyk.data.cache
 
-import android.content.Context
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import ua.kyiv.putivnyk.data.model.Place
-import ua.kyiv.putivnyk.data.model.Route
 import ua.kyiv.putivnyk.data.repository.PlaceRepository
 import ua.kyiv.putivnyk.data.repository.RouteRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
 import ua.kyiv.putivnyk.data.telemetry.AppTelemetry
-import java.io.File
+import ua.kyiv.putivnyk.platform.io.FileSystemProvider
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class OfflineCacheManager @Inject constructor(
-    @param:ApplicationContext private val context: Context,
     private val placeRepository: PlaceRepository,
     private val routeRepository: RouteRepository,
     private val userPreferenceRepository: UserPreferenceRepository,
-    private val gson: Gson,
-    private val telemetry: AppTelemetry
+    private val telemetry: AppTelemetry,
+    private val fileSystemProvider: FileSystemProvider
 ) {
     private val mutex = Mutex()
-    private val cacheDir get() = File(context.filesDir, "offline_cache").also { it.mkdirs() }
-    private val placesFile get() = File(cacheDir, "places.json")
-    private val routesFile get() = File(cacheDir, "routes.json")
-    private val prefsFile get() = File(cacheDir, "preferences.json")
-    private val metaFile get() = File(cacheDir, "cache_meta.json")
+    private val cacheDir = "offline_cache"
+    private val placesFile = "$cacheDir/places.json"
+    private val routesFile = "$cacheDir/routes.json"
+    private val prefsFile = "$cacheDir/preferences.json"
+    private val metaFile = "$cacheDir/cache_meta.json"
 
     suspend fun exportFullSnapshot() = mutex.withLock {
         withContext(Dispatchers.IO) {
             runCatching {
+                fileSystemProvider.ensureDirectory(cacheDir)
                 val allPlaces = placeRepository.getAllPlacesSnapshot()
                 val allRoutes = routeRepository.getAllRoutesSnapshot()
 
-                placesFile.writeText(gson.toJson(allPlaces))
-                routesFile.writeText(gson.toJson(allRoutes))
+                fileSystemProvider.writeText(placesFile, OfflineCacheSnapshotCodec.encodePlaces(allPlaces))
+                fileSystemProvider.writeText(routesFile, OfflineCacheSnapshotCodec.encodeRoutes(allRoutes))
 
                 val prefs = userPreferenceRepository.getAllAsMap()
-                prefsFile.writeText(gson.toJson(prefs))
+                fileSystemProvider.writeText(prefsFile, OfflineCacheSnapshotCodec.encodePreferences(prefs))
 
                 val meta = CacheMeta(
                     exportedAt = System.currentTimeMillis(),
@@ -52,7 +46,7 @@ class OfflineCacheManager @Inject constructor(
                     routesCount = allRoutes.size,
                     prefsCount = prefs.size
                 )
-                metaFile.writeText(gson.toJson(meta))
+                fileSystemProvider.writeText(metaFile, OfflineCacheSnapshotCodec.encodeMeta(meta))
 
                 telemetry.trackEvent(
                     "offline_cache_exported",
@@ -72,23 +66,20 @@ class OfflineCacheManager @Inject constructor(
     suspend fun importSnapshot(): Boolean = mutex.withLock {
         withContext(Dispatchers.IO) {
             runCatching {
-                if (!placesFile.exists()) return@withContext false
+                if (!fileSystemProvider.exists(placesFile)) return@withContext false
 
-                val placesType = object : TypeToken<List<Place>>() {}.type
-                val places: List<Place> = gson.fromJson(placesFile.readText(), placesType)
+                val places = OfflineCacheSnapshotCodec.decodePlaces(fileSystemProvider.readText(placesFile).orEmpty())
                 if (places.isNotEmpty()) {
                     placeRepository.savePlaces(places)
                 }
 
-                if (routesFile.exists()) {
-                    val routesType = object : TypeToken<List<Route>>() {}.type
-                    val routes: List<Route> = gson.fromJson(routesFile.readText(), routesType)
+                if (fileSystemProvider.exists(routesFile)) {
+                    val routes = OfflineCacheSnapshotCodec.decodeRoutes(fileSystemProvider.readText(routesFile).orEmpty())
                     routes.forEach { routeRepository.saveRoute(it) }
                 }
 
-                if (prefsFile.exists()) {
-                    val prefsType = object : TypeToken<Map<String, String>>() {}.type
-                    val prefs: Map<String, String> = gson.fromJson(prefsFile.readText(), prefsType)
+                if (fileSystemProvider.exists(prefsFile)) {
+                    val prefs = OfflineCacheSnapshotCodec.decodePreferences(fileSystemProvider.readText(prefsFile).orEmpty())
                     prefs.forEach { (key, value) ->
                         userPreferenceRepository.upsert(key, value)
                     }
@@ -105,26 +96,19 @@ class OfflineCacheManager @Inject constructor(
 
     suspend fun getCacheMeta(): CacheMeta? = withContext(Dispatchers.IO) {
         runCatching {
-            if (!metaFile.exists()) return@withContext null
-            gson.fromJson(metaFile.readText(), CacheMeta::class.java)
+            if (!fileSystemProvider.exists(metaFile)) return@withContext null
+            OfflineCacheSnapshotCodec.decodeMeta(fileSystemProvider.readText(metaFile).orEmpty())
         }.getOrNull()
     }
 
     suspend fun hasCachedData(): Boolean = withContext(Dispatchers.IO) {
-        placesFile.exists() && placesFile.length() > 2
+        fileSystemProvider.exists(placesFile) && fileSystemProvider.size(placesFile) > 2
     }
 
     suspend fun clearCache() = mutex.withLock {
         withContext(Dispatchers.IO) {
-            cacheDir.listFiles()?.forEach { it.delete() }
+            fileSystemProvider.list(cacheDir).forEach { fileSystemProvider.delete(it) }
             telemetry.trackEvent("offline_cache_cleared")
         }
     }
-
-    data class CacheMeta(
-        val exportedAt: Long,
-        val placesCount: Int,
-        val routesCount: Int,
-        val prefsCount: Int
-    )
 }

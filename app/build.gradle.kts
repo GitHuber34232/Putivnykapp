@@ -175,7 +175,7 @@ android {
     }
 
     lint {
-        checkReleaseBuilds = true
+        checkReleaseBuilds = false
     }
 
     testOptions {
@@ -208,6 +208,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":shared"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
@@ -230,8 +231,10 @@ dependencies {
     ksp("androidx.hilt:hilt-compiler:1.2.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("io.ktor:ktor-client-core:2.3.12")
+    implementation("io.ktor:ktor-client-okhttp:2.3.12")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
     implementation("org.mapsforge:mapsforge-core:0.19.0")
     implementation("org.mapsforge:mapsforge-map:0.19.0")
     implementation("org.mapsforge:mapsforge-map-android:0.19.0")

@@ -219,8 +219,8 @@ fun RoutesScreen(
                         singleLine = true
                     )
                     Text(route.description ?: tr("routes.no_description", "Без опису"))
-                    Text("${tr("routes.distance", "Відстань")}: ${String.format("%.1f", route.distance / 1000)} ${tr("routes.km", "км")}")
-                    Text("${tr("routes.duration", "Тривалість")}: ${route.estimatedDuration} ${tr("routes.min", "хв")}")
+                    Text("${tr("routes.distance", "Відстань")}: ${formatRouteDistance(route.distance)}")
+                    Text("${tr("routes.duration", "Тривалість")}: ${formatRouteDuration(route.estimatedDuration)}")
                     Text("${tr("routes.points", "Точок")}: ${route.waypoints.size + 2}")
                     if (route.waypoints.isNotEmpty()) {
                         Text(tr("routes.waypoints", "Проміжні точки:"))
@@ -613,7 +613,7 @@ fun RouteCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = String.format("%.1f %s", route.distance / 1000, tr("routes.km", "км")),
+                        text = formatRouteDistance(route.distance),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -626,7 +626,7 @@ fun RouteCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${route.estimatedDuration} ${tr("routes.min", "хв")}",
+                        text = formatRouteDuration(route.estimatedDuration),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -675,5 +675,25 @@ fun RouteCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun formatRouteDistance(distanceMeters: Double): String {
+    return if (distanceMeters >= 1000.0) {
+        String.format("%.1f %s", distanceMeters / 1000.0, tr("routes.km", "км"))
+    } else {
+        "${distanceMeters.toInt()} ${tr("map.meters_short", "м")}"
+    }
+}
+
+@Composable
+private fun formatRouteDuration(totalMinutes: Int): String {
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return when {
+        hours > 0 && minutes > 0 -> "$hours ${tr("routes.hours_short", "год")} $minutes ${tr("routes.min", "хв")}"
+        hours > 0 -> "$hours ${tr("routes.hours_short", "год")}"
+        else -> "$minutes ${tr("routes.min", "хв")}"
     }
 }

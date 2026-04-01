@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+ROOT_DIR=$(cd "$(dirname "$0")/../.." && pwd -P)
+
+if ! command -v xcodegen >/dev/null 2>&1; then
+  echo "xcodegen is required. Install it with: brew install xcodegen" >&2
+  exit 1
+fi
+
+cd "$ROOT_DIR/iosApp"
+xcodegen generate
+echo "Generated Xcode project at iosApp/PutivnykIOS.xcodeproj"

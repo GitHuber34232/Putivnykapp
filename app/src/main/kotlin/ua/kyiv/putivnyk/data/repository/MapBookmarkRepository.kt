@@ -10,15 +10,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class MapBookmarkRepository @Inject constructor(
+class RoomMapBookmarkRepository @Inject constructor(
     private val mapBookmarkDao: MapBookmarkDao
-) {
+) : MapBookmarkRepository {
+    override
     fun observeAll(): Flow<List<MapBookmark>> =
         mapBookmarkDao.observeAll().map { list -> list.map { it.toDomain() } }
 
+    override
     suspend fun getById(id: Long): MapBookmark? =
         mapBookmarkDao.getById(id)?.toDomain()
 
+    override
     suspend fun save(bookmark: MapBookmark): Long {
         val now = System.currentTimeMillis()
         val prepared = if (bookmark.id == 0L) {
@@ -29,14 +32,17 @@ class MapBookmarkRepository @Inject constructor(
         return mapBookmarkDao.insert(prepared.toEntity())
     }
 
+    override
     suspend fun update(bookmark: MapBookmark) {
         mapBookmarkDao.update(bookmark.copy(updatedAt = System.currentTimeMillis()).toEntity())
     }
 
+    override
     suspend fun delete(bookmark: MapBookmark) {
         mapBookmarkDao.delete(bookmark.toEntity())
     }
 
+    override
     suspend fun deleteAll() {
         mapBookmarkDao.deleteAll()
     }

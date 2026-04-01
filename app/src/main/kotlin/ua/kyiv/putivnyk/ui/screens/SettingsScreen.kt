@@ -182,6 +182,9 @@ fun SettingsScreen() {
                         FilledTonalButton(onClick = { viewModel.downloadModelsForAllLanguages() }) {
                             Text(tr("settings.download_ml", "Завантажити моделі ML Kit"))
                         }
+                        FilledTonalButton(onClick = { viewModel.deleteDownloadedModels() }) {
+                            Text(tr("settings.delete_ml", "Видалити моделі ML Kit"))
+                        }
                         if (isDownloadingModels || downloadState.isNotBlank()) {
                             val animatedProgress by animateFloatAsState(
                                 targetValue = (downloadProgressPercent / 100f).coerceIn(0f, 1f),

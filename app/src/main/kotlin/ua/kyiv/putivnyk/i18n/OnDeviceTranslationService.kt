@@ -1,8 +1,10 @@
 package ua.kyiv.putivnyk.i18n
 
 import com.google.mlkit.common.model.DownloadConditions
+import com.google.mlkit.common.model.RemoteModelManager
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
+import com.google.mlkit.nl.translate.TranslateRemoteModel
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -14,11 +16,11 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 @Singleton
-class OnDeviceTranslationService @Inject constructor() {
+class OnDeviceTranslationService @Inject constructor() : TranslationService {
 
     private val translators = ConcurrentHashMap<String, Translator>()
 
-    suspend fun translateText(
+    override suspend fun translateText(
         text: String,
         sourceLanguageIso: String,
         targetLanguageIso: String
@@ -41,7 +43,7 @@ class OnDeviceTranslationService @Inject constructor() {
         return translator.translateAwait(text)
     }
 
-    fun isSupportedByMlKit(isoCode: String): Boolean {
+    override fun isSupportedByMlKit(isoCode: String): Boolean {
         return try {
             val lang = resolveLanguageTag(isoCode, isSource = false) ?: return false
             TranslateLanguage.getAllLanguages().contains(lang)
@@ -50,10 +52,10 @@ class OnDeviceTranslationService @Inject constructor() {
         }
     }
 
-    suspend fun downloadModel(
+    override suspend fun downloadModel(
         sourceLanguageIso: String,
         targetLanguageIso: String,
-        timeoutMs: Long = MODEL_DOWNLOAD_TIMEOUT_MS
+        timeoutMs: Long
     ): Boolean {
         val source = resolveLanguageTag(sourceLanguageIso, isSource = true) ?: return false
         val target = resolveLanguageTag(targetLanguageIso, isSource = false) ?: return false
@@ -75,8 +77,18 @@ class OnDeviceTranslationService @Inject constructor() {
         }
     }
 
-    companion object {
-        const val MODEL_DOWNLOAD_TIMEOUT_MS = 90_000L
+    override suspend fun deleteDownloadedModels(): Int {
+        translators.values.forEach { translator -> runCatching { translator.close() } }
+        translators.clear()
+
+        val manager = RemoteModelManager.getInstance()
+        val models = manager.getDownloadedModelsAwait()
+            .filterIsInstance<TranslateRemoteModel>()
+
+        models.forEach { model ->
+            runCatching { manager.deleteDownloadedModelAwait(model) }
+        }
+        return models.size
     }
 
     private fun getOrCreateTranslator(
@@ -116,5 +128,19 @@ class OnDeviceTranslationService @Inject constructor() {
             translate(text)
                 .addOnSuccessListener { continuation.resume(it) }
                 .addOnFailureListener { continuation.resumeWithException(it) }
+        }
+
+    private suspend fun RemoteModelManager.getDownloadedModelsAwait() =
+        suspendCancellableCoroutine<Set<com.google.mlkit.common.model.RemoteModel>> { continuation ->
+            getDownloadedModels(TranslateRemoteModel::class.java)
+                .addOnSuccessListener { if (continuation.isActive) continuation.resume(it) }
+                .addOnFailureListener { if (continuation.isActive) continuation.resumeWithException(it) }
+        }
+
+    private suspend fun RemoteModelManager.deleteDownloadedModelAwait(model: TranslateRemoteModel) =
+        suspendCancellableCoroutine<Unit> { continuation ->
+            deleteDownloadedModel(model)
+                .addOnSuccessListener { if (continuation.isActive) continuation.resume(Unit) }
+                .addOnFailureListener { if (continuation.isActive) continuation.resumeWithException(it) }
         }
 }
