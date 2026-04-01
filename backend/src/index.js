@@ -37,6 +37,10 @@ app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`putivnyk-api listening on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`putivnyk-api listening on port ${PORT}`);
+  });
+}
+
+module.exports = app;

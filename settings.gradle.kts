@@ -21,7 +21,10 @@ pluginManagement {
 
     plugins {
         id("com.android.application") version agpVersion
+        id("com.android.library") version agpVersion
         id("org.jetbrains.kotlin.android") version kotlinVersion
+        id("org.jetbrains.kotlin.multiplatform") version kotlinVersion
+        id("org.jetbrains.kotlin.plugin.serialization") version kotlinVersion
         id("org.jetbrains.kotlin.plugin.compose") version kotlinVersion
         id("com.google.dagger.hilt.android") version hiltVersion
         id("com.google.devtools.ksp") version kspVersion
@@ -41,3 +44,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Putivnyk"
 include(":app")
+include(":shared")

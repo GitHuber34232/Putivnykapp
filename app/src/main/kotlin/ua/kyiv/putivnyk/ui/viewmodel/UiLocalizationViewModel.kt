@@ -13,9 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ua.kyiv.putivnyk.data.repository.LocalizationRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
-import ua.kyiv.putivnyk.i18n.AssetUiTranslations
-import ua.kyiv.putivnyk.i18n.OnDeviceTranslationService
 import ua.kyiv.putivnyk.i18n.SupportedLanguages
+import ua.kyiv.putivnyk.i18n.TranslationService
+import ua.kyiv.putivnyk.i18n.UiTranslationsProvider
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -26,8 +26,8 @@ import javax.inject.Inject
 class UiLocalizationViewModel @Inject constructor(
     private val localizationRepository: LocalizationRepository,
     private val userPreferenceRepository: UserPreferenceRepository,
-    private val translationService: OnDeviceTranslationService,
-    private val assetUiTranslations: AssetUiTranslations
+    private val translationService: TranslationService,
+    private val assetUiTranslations: UiTranslationsProvider
 ) : ViewModel() {
 
     private val dynamicMemoryCache = ConcurrentHashMap<String, String>()
@@ -209,6 +209,31 @@ class UiLocalizationViewModel @Inject constructor(
         _isDownloadingModels.value = false
         _downloadProgressPercent.value = 0
         _downloadState.value = "Завантаження скасовано"
+    }
+
+    fun deleteDownloadedModels() {
+        if (_isDownloadingModels.value) return
+
+        viewModelScope.launch {
+            _isDownloadingModels.value = true
+            _downloadProgressPercent.value = 0
+            _downloadState.value = "Видалення моделей ML Kit..."
+
+            val deletedCount = runCatching {
+                translationService.deleteDownloadedModels()
+            }.getOrElse {
+                Log.e(TAG, "Failed to delete ML Kit models", it)
+                -1
+            }
+
+            _isDownloadingModels.value = false
+            _downloadProgressPercent.value = if (deletedCount >= 0) 100 else 0
+            _downloadState.value = when {
+                deletedCount > 0 -> "Видалено моделей: $deletedCount"
+                deletedCount == 0 -> "Завантажених моделей не знайдено"
+                else -> "Не вдалося видалити моделі"
+            }
+        }
     }
 
     suspend fun translateDynamicText(text: String): String {

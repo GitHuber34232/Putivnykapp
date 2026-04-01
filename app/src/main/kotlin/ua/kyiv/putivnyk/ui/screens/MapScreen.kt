@@ -91,6 +91,7 @@ fun MapScreen(
     val currentWaypointIndex by viewModel.currentWaypointIndex.collectAsState()
     val remainingDistance by viewModel.remainingDistance.collectAsState()
     val remainingMinutes by viewModel.remainingMinutes.collectAsState()
+    val routeProgressFraction by viewModel.routeProgressFraction.collectAsState()
     val distanceToNextWaypoint by viewModel.distanceToNextWaypoint.collectAsState()
     val nextWaypointName by viewModel.nextWaypointName.collectAsState()
     val poiPromptPlace by viewModel.poiPromptPlace.collectAsState()
@@ -152,8 +153,8 @@ fun MapScreen(
 
     ObserveGpsLocation(
         context = context,
-        onLocationChanged = { latitude, longitude, bearing, accuracy ->
-            viewModel.updateUserLocation(latitude, longitude, bearing, accuracy)
+        onLocationChanged = { latitude, longitude, bearing, accuracy, speed ->
+            viewModel.updateUserLocation(latitude, longitude, bearing, accuracy, speed)
         },
         onSatellitesChanged = { usedCount, totalCount ->
             viewModel.updateGpsSatellites(usedCount, totalCount)
@@ -415,10 +416,9 @@ fun MapScreen(
 
                             if (hasUserLocation && remainingDistance > 0) {
                                 val totalPoints = (activeRoute!!.waypoints.size + 2)
-                                val progressFraction = currentWaypointIndex.toFloat() / (totalPoints - 1).coerceAtLeast(1).toFloat()
 
                                 LinearProgressIndicator(
-                                    progress = { progressFraction },
+                                    progress = { routeProgressFraction },
                                     modifier = Modifier.fillMaxWidth().padding(end = 8.dp, bottom = 4.dp),
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
@@ -435,30 +435,21 @@ fun MapScreen(
                                         color = MaterialTheme.colorScheme.primary
                                     )
 
-                                    val distText = if (remainingDistance >= 1000) {
-                                        val rounded = (remainingDistance / 100).toInt() * 100.0
-                                        String.format("%.1f ${tr("routes.km", "км")}", rounded / 1000)
-                                    } else {
-                                        val rounded = (remainingDistance / 100).toInt() * 100
-                                        "$rounded ${tr("routes.m", "м")}"
-                                    }
                                     Text(
-                                        text = distText,
+                                        text = formatRouteDistance(remainingDistance),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = formatRouteDuration(remainingMinutes),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
                                 nextWaypointName?.let { name ->
-                                    val nextDistText = if (distanceToNextWaypoint >= 1000) {
-                                        val rounded = (distanceToNextWaypoint / 100).toInt() * 100.0
-                                        String.format("%.1f ${tr("routes.km", "км")}", rounded / 1000)
-                                    } else {
-                                        val rounded = (distanceToNextWaypoint / 100).toInt() * 100
-                                        "$rounded ${tr("routes.m", "м")}"
-                                    }
                                     Text(
-                                        text = "→ ${trDynamic(name)} ($nextDistText)",
+                                        text = "→ ${trDynamic(name)} (${formatRouteDistance(distanceToNextWaypoint)})",
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -784,6 +775,25 @@ fun MapScreen(
     }
 }
 
+private fun formatRouteDistance(distanceMeters: Double): String {
+    return when {
+        distanceMeters >= 1000 -> String.format("%.1f км", distanceMeters / 1000.0)
+        distanceMeters >= 100 -> "${(distanceMeters / 10.0).toInt() * 10} м"
+        else -> "${distanceMeters.toInt()} м"
+    }
+}
+
+private fun formatRouteDuration(totalMinutes: Int): String {
+    if (totalMinutes <= 0) return "0 хв"
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return when {
+        hours > 0 && minutes > 0 -> "${hours} год ${minutes} хв"
+        hours > 0 -> "${hours} год"
+        else -> "${minutes} хв"
+    }
+}
+
 @Composable
 private fun MapPlaceCard(
     modifier: Modifier = Modifier,
@@ -867,7 +877,7 @@ private enum class MapAdaptiveMode {
 @Composable
 private fun ObserveGpsLocation(
     context: Context,
-    onLocationChanged: (Double, Double, Float, Float) -> Unit,
+    onLocationChanged: (Double, Double, Float, Float, Float) -> Unit,
     onSatellitesChanged: (Int, Int) -> Unit = { _, _ -> }
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -909,7 +919,8 @@ private fun ObserveGpsLocation(
             override fun onLocationChanged(location: Location) {
                 val bearing = if (location.hasBearing()) location.bearing else -1f
                 val accuracy = if (location.hasAccuracy()) location.accuracy else Float.MAX_VALUE
-                onLocationChanged(location.latitude, location.longitude, bearing, accuracy)
+                val speed = if (location.hasSpeed()) location.speed else 0f
+                onLocationChanged(location.latitude, location.longitude, bearing, accuracy, speed)
             }
 
             @Deprecated("Deprecated in API 29")
@@ -940,7 +951,8 @@ private fun ObserveGpsLocation(
                 bestLastKnown?.let {
                     val bearing = if (it.hasBearing()) it.bearing else -1f
                     val accuracy = if (it.hasAccuracy()) it.accuracy else Float.MAX_VALUE
-                    onLocationChanged(it.latitude, it.longitude, bearing, accuracy)
+                    val speed = if (it.hasSpeed()) it.speed else 0f
+                    onLocationChanged(it.latitude, it.longitude, bearing, accuracy, speed)
                 }
             }
         }

@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import ua.kyiv.putivnyk.ui.i18n.tr
+import ua.kyiv.putivnyk.ui.utils.getAccessibleTextColor
 
 @Composable
 fun LoadingStateView(
@@ -36,7 +37,7 @@ fun LoadingStateView(
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = getAccessibleTextColor(MaterialTheme.colorScheme.surface)
             )
         }
     }
@@ -63,13 +64,13 @@ fun EmptyStateView(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = getAccessibleTextColor(MaterialTheme.colorScheme.surface)
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = getAccessibleTextColor(MaterialTheme.colorScheme.surface)
                 )
             }
         }
@@ -100,10 +101,11 @@ fun ErrorRetryBanner(
             Text(
                 text = message,
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = getAccessibleTextColor(MaterialTheme.colorScheme.errorContainer)
             )
             TextButton(onClick = onRetry) {
-                Text(tr("common.retry", "Повторити"))
+                Text(tr("common.retry", "Повторити"), color = getAccessibleTextColor(MaterialTheme.colorScheme.errorContainer))
             }
         }
     }

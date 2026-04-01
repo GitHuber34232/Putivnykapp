@@ -11,15 +11,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SyncStateRepository @Inject constructor(
+class RoomSyncStateRepository @Inject constructor(
     private val syncStateDao: SyncStateDao
-) {
+) : SyncStateRepository {
+    override
     fun observeAll(): Flow<List<SyncState>> =
         syncStateDao.observeAll().map { list -> list.map { it.toDomain() } }
 
+    override
     suspend fun getByEntity(entityName: String): SyncState? =
         syncStateDao.getByEntity(entityName)?.toDomain()
 
+    override
     suspend fun setRunning(entityName: String) {
         syncStateDao.upsert(
             SyncState(
@@ -30,7 +33,8 @@ class SyncStateRepository @Inject constructor(
         )
     }
 
-    suspend fun setSuccess(entityName: String, syncedAt: Long = System.currentTimeMillis()) {
+    override
+    suspend fun setSuccess(entityName: String, syncedAt: Long) {
         syncStateDao.upsert(
             SyncState(
                 entityName = entityName,
@@ -42,6 +46,7 @@ class SyncStateRepository @Inject constructor(
         )
     }
 
+    override
     suspend fun setError(entityName: String, message: String?) {
         val current = getByEntity(entityName)
         syncStateDao.upsert(
@@ -55,6 +60,7 @@ class SyncStateRepository @Inject constructor(
         )
     }
 
+    override
     suspend fun clearAll() {
         syncStateDao.clearAll()
     }

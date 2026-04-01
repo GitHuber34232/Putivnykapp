@@ -1,0 +1,1456 @@
+[
+  {
+    "id": 1,
+    "name": "Софійський собор",
+    "name_en": "Saint Sophia Cathedral",
+    "latitude": 50.4529,
+    "longitude": 30.5145,
+    "category": "historical",
+    "tags": [
+      "RELIGION",
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Архітектурна пам'ятка XI століття, об'єкт Світової спадщини ЮНЕСКО",
+    "rating": 4.8,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://kiev-foto.info/images/hramy/sofiya/sobor/sofijskij_sobor_v_kieve_foto_1.jpg",
+      "https://kiev-foto.info/images/hramy/sofiya/sobor/sofijskij_sobor_v_kieve_foto_3.jpg"
+    ],
+    "nearest_metro": "Золоті ворота",
+    "place_id": "ChIJXzle44jO1EARNKSlXc90N8Y",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJXzle44jO1EARNKSlXc90N8Y"
+  },
+  {
+    "id": 2,
+    "name": "Києво-Печерська лавра",
+    "name_en": "Kyiv Pechersk Lavra",
+    "latitude": 50.4342,
+    "longitude": 30.5575,
+    "category": "historical",
+    "tags": [
+      "RELIGION",
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Один з найважливіших духовних центрів православ'я",
+    "rating": 4.9,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/%D0%9B%D0%B0%D0%B2%D1%80%D0%B0.jpg/960px-%D0%9B%D0%B0%D0%B2%D1%80%D0%B0.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Kyiv_Pechersk_Lavra_View_from_the_Dnieper_River.jpg/960px-Kyiv_Pechersk_Lavra_View_from_the_Dnieper_River.jpg"
+    ],
+    "nearest_metro": "Арсенальна",
+    "place_id": "ChIJW44MSqDP1EARB4igvLyiQDs",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJW44MSqDP1EARB4igvLyiQDs"
+  },
+  {
+    "id": 3,
+    "name": "Майдан Незалежності",
+    "name_en": "Independence Square",
+    "latitude": 50.4501,
+    "longitude": 30.5234,
+    "category": "landmark",
+    "tags": [
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Центральна площа Києва та України",
+    "rating": 4.5,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://kiev-foto.info/images/uls/shevch/maidan/maidan_nezalezhnosti_001.jpg",
+      "https://kiev-foto.info/images/uls/shevch/maidan/maidan_nezalezhnosti_002.jpg"
+    ],
+    "nearest_metro": "Майдан Незалежності",
+    "place_id": "ChIJH7mh_1DO1EARHHl-_mJZLQQ",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJH7mh_1DO1EARHHl-_mJZLQQ"
+  },
+  {
+    "id": 4,
+    "name": "Андріївський узвіз",
+    "name_en": "Andriyivskyy Descent",
+    "latitude": 50.4593,
+    "longitude": 30.5171,
+    "category": "cultural",
+    "tags": [
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Історична вулиця-музей у Подільському районі",
+    "rating": 4.6,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/%D0%90%D0%BD%D0%B4%D1%80%D1%96%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D1%83%D0%B7%D0%B2%D1%96%D0%B7.%D0%90%D0%BD%D0%B4%D1%80%D1%96%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B0_%D1%86%D0%B5%D1%80%D0%BA%D0%B2%D0%B0._%D0%9A%D0%B8%D1%97%D0%B2.jpg/960px-%D0%90%D0%BD%D0%B4%D1%80%D1%96%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D1%83%D0%B7%D0%B2%D1%96%D0%B7.%D0%90%D0%BD%D0%B4%D1%80%D1%96%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B0_%D1%86%D0%B5%D1%80%D0%BA%D0%B2%D0%B0._%D0%9A%D0%B8%D1%97%D0%B2.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Andriyivskyy_Descent%27s_historical_building.JPG/960px-Andriyivskyy_Descent%27s_historical_building.JPG"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJ8RD5zEPO1EARlkMnW0tP4YY",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ8RD5zEPO1EARlkMnW0tP4YY"
+  },
+  {
+    "id": 5,
+    "name": "Золоті ворота",
+    "name_en": "Golden Gate",
+    "latitude": 50.4487,
+    "longitude": 30.5133,
+    "category": "historical",
+    "tags": [
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Пам'ятка оборонної архітектури Київської Русі XI століття",
+    "rating": 4.3,
+    "visitDuration": 65,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Golden_Gate_Kiev_2018_G1.jpg/960px-Golden_Gate_Kiev_2018_G1.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Golden_Gate_Kiev_top_2018_G1.jpg/960px-Golden_Gate_Kiev_top_2018_G1.jpg"
+    ],
+    "nearest_metro": "Золоті ворота",
+    "place_id": "ChIJizbqdQDP1EAR3abbL00qou4",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJizbqdQDP1EAR3abbL00qou4"
+  },
+  {
+    "id": 6,
+    "name": "Михайлівський золотоверхий монастир",
+    "name_en": "St. Michael's Golden-Domed Monastery",
+    "latitude": 50.4559,
+    "longitude": 30.5231,
+    "category": "cathedral",
+    "tags": [
+      "RELIGION"
+    ],
+    "isLeftBank": false,
+    "description": "Один із символів Києва у Шевченківському районі",
+    "rating": 4.9,
+    "visitDuration": 65,
+    "imageUrls": [
+      "https://kiev-foto.info/images/monastyri/zlatoverhiy/monastyr/mykhaylivskiy_zolotoverkhyi_monastyr_0.jpg",
+      "https://kiev-foto.info/images/monastyri/zlatoverhiy/monastyr/mykhaylivskiy_zolotoverkhyi_monastyr_2.jpg"
+    ],
+    "nearest_metro": "Майдан Незалежності",
+    "place_id": "ChIJzW8xbUXO1EARaVo3pT1NthI",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJzW8xbUXO1EARaVo3pT1NthI"
+  },
+  {
+    "id": 7,
+    "name": "Володимирський собор",
+    "name_en": "St. Volodymyr's Cathedral",
+    "latitude": 50.4458,
+    "longitude": 30.5089,
+    "category": "cathedral",
+    "tags": [
+      "RELIGION"
+    ],
+    "isLeftBank": false,
+    "description": "Визначний собор із монументальним розписом",
+    "rating": 4.8,
+    "visitDuration": 65,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/%D0%92%D0%BE%D0%BB%D0%BE%D0%B4%D0%B8%D0%BC%D0%B8%D1%80%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D1%81%D0%BE%D0%B1%D0%BE%D1%80%2C_%D0%B2%D0%B8%D0%B4_%D0%B7%D1%96_%D1%81%D1%82%D0%BE%D1%80%D0%BE%D0%BD%D0%B8_%D0%B2%D1%85%D0%BE%D0%B4%D1%83.jpg/960px-%D0%92%D0%BE%D0%BB%D0%BE%D0%B4%D0%B8%D0%BC%D0%B8%D1%80%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D1%81%D0%BE%D0%B1%D0%BE%D1%80%2C_%D0%B2%D0%B8%D0%B4_%D0%B7%D1%96_%D1%81%D1%82%D0%BE%D1%80%D0%BE%D0%BD%D0%B8_%D0%B2%D1%85%D0%BE%D0%B4%D1%83.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/The_Crucifiction%2C_St._Volodymyr%27s_Cathedral%2C_Kyiv%2C_stereo_card_1898_01.jpg/960px-The_Crucifiction%2C_St._Volodymyr%27s_Cathedral%2C_Kyiv%2C_stereo_card_1898_01.jpg"
+    ],
+    "nearest_metro": "Університет",
+    "place_id": "ChIJ3R1zx_fO1EAREnWAa1iVzDc",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ3R1zx_fO1EAREnWAa1iVzDc"
+  },
+  {
+    "id": 8,
+    "name": "Пам'ятник Богдану Хмельницькому",
+    "name_en": "Bohdan Khmelnytsky Monument",
+    "latitude": 50.4524,
+    "longitude": 30.5167,
+    "category": "monument",
+    "tags": [
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Пам'ятник на Софійській площі",
+    "rating": 4.6,
+    "visitDuration": 45,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Bohdan_Khmelnytsky_Monument%2C_sheltered_from_Russian_shelling._Kyiv%2C_July_2022.jpg/960px-Bohdan_Khmelnytsky_Monument%2C_sheltered_from_Russian_shelling._Kyiv%2C_July_2022.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Bohdan_Khmelnytsky_Kiev_2018_G2.jpg/960px-Bohdan_Khmelnytsky_Kiev_2018_G2.jpg"
+    ],
+    "nearest_metro": "Золоті ворота",
+    "place_id": "ChIJ8xwIGlvO1EARnDtFWCgIGGg",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ8xwIGlvO1EARnDtFWCgIGGg"
+  },
+  {
+    "id": 9,
+    "name": "Національна опера України",
+    "name_en": "National Opera of Ukraine",
+    "latitude": 50.4474,
+    "longitude": 30.5113,
+    "category": "theater",
+    "tags": [
+      "THEATER"
+    ],
+    "isLeftBank": false,
+    "description": "Головна оперна сцена країни",
+    "rating": 4.8,
+    "visitDuration": 150,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/%D0%9D%D0%B0%D1%86%D1%96%D0%BE%D0%BD%D0%B0%D0%BB%D1%8C%D0%BD%D0%B8%D0%B9_%D0%B0%D0%BA%D0%B0%D0%B4%D0%B5%D0%BC%D1%96%D1%87%D0%BD%D0%B8%D0%B9_%D1%82%D0%B5%D0%B0%D1%82%D1%80_%D0%BE%D0%BF%D0%B5%D1%80%D0%B8_%D1%82%D0%B0_%D0%B1%D0%B0%D0%BB%D0%B5%D1%82%D1%83_%D0%A3%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D0%B8_%D1%96%D0%BC%D0%B5%D0%BD%D1%96_%D0%A2%D0%B0%D1%80%D0%B0%D1%81%D0%B0_%D0%A8%D0%B5%D0%B2%D1%87%D0%B5%D0%BD%D0%BA%D0%B0_DSC_5329_%D0%92%D0%BE%D0%BB%D0%BE%D0%B4%D0%B8%D0%BC%D0%B8%D1%80%D1%81%D1%8C%D0%BA%D0%B0_%D0%B2%D1%83%D0%BB.%2C_50.jpg/960px-thumbnail.jpg",
+      "https://live.staticflickr.com/3804/33395868490_938e0a602a_b.jpg"
+    ],
+    "nearest_metro": "Театральна",
+    "place_id": "ChIJs1EjPljO1EARdhwwhayQZVo",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJs1EjPljO1EARdhwwhayQZVo"
+  },
+  {
+    "id": 10,
+    "name": "Театр ім. Івана Франка",
+    "name_en": "Ivan Franko National Drama Theater",
+    "latitude": 50.4469,
+    "longitude": 30.5286,
+    "category": "theater",
+    "tags": [
+      "THEATER"
+    ],
+    "isLeftBank": false,
+    "description": "Класичний український драматичний театр",
+    "rating": 4.8,
+    "visitDuration": 150,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/%D0%94%D1%80%D0%B0%D0%BC%D0%B0%D1%82%D0%B8%D1%87%D0%BD%D0%B8%D0%B9_%D1%82%D0%B5%D0%B0%D1%82%D1%80_%D1%96%D0%BC%D0%B5%D0%BD%D1%96_%D0%86%D0%B2%D0%B0%D0%BD%D0%B0_%D0%A4%D1%80%D0%B0%D0%BD%D0%BA%D0%B0.JPG/960px-%D0%94%D1%80%D0%B0%D0%BC%D0%B0%D1%82%D0%B8%D1%87%D0%BD%D0%B8%D0%B9_%D1%82%D0%B5%D0%B0%D1%82%D1%80_%D1%96%D0%BC%D0%B5%D0%BD%D1%96_%D0%86%D0%B2%D0%B0%D0%BD%D0%B0_%D0%A4%D1%80%D0%B0%D0%BD%D0%BA%D0%B0.JPG",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Ivan_Franko_Museum.jpg/960px-Ivan_Franko_Museum.jpg"
+    ],
+    "nearest_metro": "Хрещатик",
+    "place_id": "ChIJOd6ciFTO1EARTzdyilmKByA",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJOd6ciFTO1EARTzdyilmKByA"
+  },
+  {
+    "id": 11,
+    "name": "Національний театр ім. Лесі Українки",
+    "name_en": "Lesya Ukrainka National Academic Theater",
+    "latitude": 50.4424,
+    "longitude": 30.5228,
+    "category": "theater",
+    "tags": [
+      "THEATER"
+    ],
+    "isLeftBank": false,
+    "description": "Відомий академічний театр у центрі",
+    "rating": 4.7,
+    "visitDuration": 145,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/The_element_interior_design_of_the_theatre_01.jpg/960px-The_element_interior_design_of_the_theatre_01.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/%D0%91%D0%BE%D0%B3%D0%B4%D0%B0%D0%BD%D0%B0_%D0%A5%D0%BC%D0%B5%D0%BB%D1%8C%D0%BD%D0%B8%D1%86%D0%BA%D0%BE%D0%B3%D0%BE_5_%D0%B4%D1%80%D0%BE%D0%B1%D1%8C_15_%D0%9A%D0%B8%D0%B5%D0%B2_2012_01.JPG/960px-%D0%91%D0%BE%D0%B3%D0%B4%D0%B0%D0%BD%D0%B0_%D0%A5%D0%BC%D0%B5%D0%BB%D1%8C%D0%BD%D0%B8%D1%86%D0%BA%D0%BE%D0%B3%D0%BE_5_%D0%B4%D1%80%D0%BE%D0%B1%D1%8C_15_%D0%9A%D0%B8%D0%B5%D0%B2_2012_01.JPG"
+    ],
+    "nearest_metro": "Театральна",
+    "place_id": "ChIJXZbnQFbO1EARM6h_d4BgFuk",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJXZbnQFbO1EARM6h_d4BgFuk"
+  },
+  {
+    "id": 12,
+    "name": "Національний музей історії України",
+    "name_en": "National Museum of the History of Ukraine",
+    "latitude": 50.4586,
+    "longitude": 30.5173,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": false,
+    "description": "Ключовий історичний музей у верхньому місті",
+    "rating": 4.7,
+    "visitDuration": 110,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/%D0%9D%D0%B0%D1%86%D1%96%D0%BE%D0%BD%D0%B0%D0%BB%D1%8C%D0%BD%D0%B8%D0%B9_%D0%BC%D1%83%D0%B7%D0%B5%D0%B9_%D1%96%D1%81%D1%82%D0%BE%D1%80%D1%96%D1%97_%D0%A3%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D0%B8%2C_2015_%D1%80..jpg/960px-%D0%9D%D0%B0%D1%86%D1%96%D0%BE%D0%BD%D0%B0%D0%BB%D1%8C%D0%BD%D0%B8%D0%B9_%D0%BC%D1%83%D0%B7%D0%B5%D0%B9_%D1%96%D1%81%D1%82%D0%BE%D1%80%D1%96%D1%97_%D0%A3%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D0%B8%2C_2015_%D1%80..jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/National_Museum_of_Natural_History_at_the_National_Academy_of_Sciences_of_Ukraine_%28Kyiv%29_%D0%9D%D0%B0%D1%86%D1%96%D0%BE%D0%BD%D0%B0%D0%BB%D1%8C%D0%BD%D0%B8%D0%B9_%D0%BD%D0%B0%D1%83%D0%BA%D0%BE%D0%B2%D0%BE-%D0%BF%D1%80%D0%B8%D1%80%D0%BE%D0%B4%D0%BD%D0%B8%D1%87%D0%B8%D0%B9_%D0%BC%D1%83%D0%B7%D0%B5%D0%B9_%D0%9D%D0%90%D0%9D_%D0%A3%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D0%B8_%28%D0%9A%D0%B8%D1%97%D0%B2%29_%2850917961586%29.jpg/960px-thumbnail.jpg"
+    ],
+    "nearest_metro": "Поштова площа",
+    "place_id": "ChIJj16wF_jO1EARz_3MFbLWec0",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJj16wF_jO1EARz_3MFbLWec0"
+  },
+  {
+    "id": 13,
+    "name": "Музей Ханенків",
+    "name_en": "Khanenko Museum",
+    "latitude": 50.4389,
+    "longitude": 30.5144,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": false,
+    "description": "Музей мистецтв імені Богдана та Варвари Ханенків",
+    "rating": 4.7,
+    "visitDuration": 110,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Prophet_Ezekiel%2C_Khanenko_Museum_Kyiv%2C_inv._135_%D0%91%D0%A0_%D0%9C%D0%A5.jpg/960px-Prophet_Ezekiel%2C_Khanenko_Museum_Kyiv%2C_inv._135_%D0%91%D0%A0_%D0%9C%D0%A5.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Apostle_Paul%2C_Khanenko_Museum_Kyiv%2C_inv._136_%D0%91%D0%A0_%D0%9C%D0%A5.jpg/960px-Apostle_Paul%2C_Khanenko_Museum_Kyiv%2C_inv._136_%D0%91%D0%A0_%D0%9C%D0%A5.jpg"
+    ],
+    "nearest_metro": "Площа Українських Героїв",
+    "place_id": "ChIJYQg8GvnO1EARdNThXjRBl_E",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJYQg8GvnO1EARdNThXjRBl_E"
+  },
+  {
+    "id": 14,
+    "name": "Парк ім. Тараса Шевченка",
+    "name_en": "Taras Shevchenko Park",
+    "latitude": 50.4419,
+    "longitude": 30.5134,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Міський парк поруч із університетом",
+    "rating": 4.7,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://kiev-foto.info/images/mesta/parki/shevchenka/park_shevchenka_v_kyiv_1.jpg",
+      "https://kiev-foto.info/images/mesta/parki/shevchenka/park_shevchenka_v_kyiv_2.jpg"
+    ],
+    "nearest_metro": "Площа Українських Героїв",
+    "place_id": "ChIJoUUJqfnO1EARfD--thVh3RA",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJoUUJqfnO1EARfD--thVh3RA"
+  },
+  {
+    "id": 15,
+    "name": "Ботанічний сад ім. Фоміна",
+    "name_en": "O.V. Fomin Botanical Garden",
+    "latitude": 50.4433,
+    "longitude": 30.5006,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Історичний ботсад біля станції Університет",
+    "rating": 4.8,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/0/04/KlimatronAlexanderFomin.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Kiev_Alexander_Fomin_Botanical_Garden_%2850142677628%29.jpg/960px-Kiev_Alexander_Fomin_Botanical_Garden_%2850142677628%29.jpg"
+    ],
+    "nearest_metro": "Університет",
+    "place_id": "ChIJc30u3PbO1EARtA0u0Ui1DG0",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJc30u3PbO1EARtA0u0Ui1DG0"
+  },
+  {
+    "id": 16,
+    "name": "Парк Володимирська гірка",
+    "name_en": "Volodymyrska Hill Park",
+    "latitude": 50.4547,
+    "longitude": 30.527,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Парк із панорамою Дніпра",
+    "rating": 4.8,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/%D0%9F%D0%B0%D0%BC%27%D1%8F%D1%82%D0%BD%D0%B8%D0%BA_%D0%BA%D0%BD%D1%8F%D0%B7%D1%8E_%D0%92%D0%BE%D0%BB%D0%BE%D0%B4%D0%B8%D0%BC%D0%B8%D1%80%D1%83_%D0%92%D0%B5%D0%BB%D0%B8%D0%BA%D0%BE%D0%BC%D1%83.jpg/960px-%D0%9F%D0%B0%D0%BC%27%D1%8F%D1%82%D0%BD%D0%B8%D0%BA_%D0%BA%D0%BD%D1%8F%D0%B7%D1%8E_%D0%92%D0%BE%D0%BB%D0%BE%D0%B4%D0%B8%D0%BC%D0%B8%D1%80%D1%83_%D0%92%D0%B5%D0%BB%D0%B8%D0%BA%D0%BE%D0%BC%D1%83.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Volodymyrska_hirka%2C_Kyiv_%281%29.jpg/960px-Volodymyrska_hirka%2C_Kyiv_%281%29.jpg"
+    ],
+    "nearest_metro": "Поштова площа",
+    "place_id": "ChIJiT4uj0XO1EARGZx_Gnd3y2A",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJiT4uj0XO1EARGZx_Gnd3y2A"
+  },
+  {
+    "id": 17,
+    "name": "Остання Барикада",
+    "name_en": "Ostannya Barykada",
+    "latitude": 50.4502,
+    "longitude": 30.5238,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": false,
+    "description": "Гастрономічний простір під Майданом Незалежності",
+    "rating": 4.6,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://live.staticflickr.com/4772/38964893760_f8e05c114f_b.jpg",
+      "https://live.staticflickr.com/4784/40733318472_da44aeae9a_b.jpg"
+    ],
+    "nearest_metro": "Майдан Незалежності",
+    "place_id": "ChIJ82TSWFDO1EAR0EljJWoRiOE",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ82TSWFDO1EAR0EljJWoRiOE"
+  },
+  {
+    "id": 18,
+    "name": "Пузата Хата (Хрещатик)",
+    "name_en": "Puzata Hata (Khreschatyk)",
+    "latitude": 50.4479,
+    "longitude": 30.5216,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": false,
+    "description": "Популярний ресторан української кухні для туристів",
+    "rating": 4.3,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://live.staticflickr.com/7414/26717875650_7d2fe26381_b.jpg",
+      "https://live.staticflickr.com/7258/26973944375_1858ae5550_b.jpg"
+    ],
+    "nearest_metro": "Хрещатик",
+    "place_id": "ChIJyfyHFfzO1EARSDmyRNEoY7U",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJyfyHFfzO1EARSDmyRNEoY7U"
+  },
+  {
+    "id": 19,
+    "name": "Musafir (Богдана Хмельницького)",
+    "name_en": "Musafir (Bohdana Khmelnytskoho)",
+    "latitude": 50.4465,
+    "longitude": 30.5118,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": false,
+    "description": "Кримськотатарська кухня у центрі",
+    "rating": 4.7,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://live.staticflickr.com/65535/48707469951_27df611085_b.jpg",
+      "https://live.staticflickr.com/65535/48707469776_a344feac43_b.jpg"
+    ],
+    "nearest_metro": "Театральна",
+    "place_id": "ChIJC1LeFFbO1EARyW-2azth7os",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJC1LeFFbO1EARyW-2azth7os"
+  },
+  {
+    "id": 20,
+    "name": "Костел Святого Миколая",
+    "name_en": "St. Nicholas Roman Catholic Cathedral",
+    "latitude": 50.4276,
+    "longitude": 30.5165,
+    "category": "cathedral",
+    "tags": [
+      "RELIGION"
+    ],
+    "isLeftBank": false,
+    "description": "Неоготичний костел на Великій Васильківській",
+    "rating": 4.8,
+    "visitDuration": 65,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/St._Nicholas_Roman_Catholic_Cathedral%2C_Kyiv_8.jpg/960px-St._Nicholas_Roman_Catholic_Cathedral%2C_Kyiv_8.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/St._Nicholas_Roman_Catholic_Cathedral%2C_Kyiv_3.jpg/960px-St._Nicholas_Roman_Catholic_Cathedral%2C_Kyiv_3.jpg"
+    ],
+    "nearest_metro": "Олімпійська",
+    "place_id": "ChIJ05p7nh7P1EARavZX4rYkflU",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ05p7nh7P1EARavZX4rYkflU"
+  },
+  {
+    "id": 21,
+    "name": "Батьківщина-Мати",
+    "name_en": "Motherland Monument",
+    "latitude": 50.4266,
+    "longitude": 30.5632,
+    "category": "monument",
+    "tags": [
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Монумент у меморіальному комплексі",
+    "rating": 4.7,
+    "visitDuration": 45,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/en/thumb/4/43/%C2%AB%D0%91%D0%B0%D1%82%D1%8C%D0%BA%D1%96%D0%B2%D1%89%D0%B8%D0%BD%D0%B0-%D0%9C%D0%B0%D1%82%D0%B8_%D0%BD%D0%B0_%D1%84%D0%BE%D0%BD%D1%96_%D0%BF%D0%BE%D1%85%D0%BC%D1%83%D1%80%D0%BE%D0%B3%D0%BE_%D0%BD%D0%B5%D0%B1%D0%B0%C2%BB.jpg/960px-%C2%AB%D0%91%D0%B0%D1%82%D1%8C%D0%BA%D1%96%D0%B2%D1%89%D0%B8%D0%BD%D0%B0-%D0%9C%D0%B0%D1%82%D0%B8_%D0%BD%D0%B0_%D1%84%D0%BE%D0%BD%D1%96_%D0%BF%D0%BE%D1%85%D0%BC%D1%83%D1%80%D0%BE%D0%B3%D0%BE_%D0%BD%D0%B5%D0%B1%D0%B0%C2%BB.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/2/2e/Monument_to_the_Motherland%2C_Dnipro_River_and_Kyiv_Sunset.jpg"
+    ],
+    "nearest_metro": "Звіринецька",
+    "place_id": "ChIJrU1d5nbP1EARj_9dQI85eyQ",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJrU1d5nbP1EARj_9dQI85eyQ"
+  },
+  {
+    "id": 22,
+    "name": "Музей війни України у Другій світовій",
+    "name_en": "National Museum of the History of Ukraine in WWII",
+    "latitude": 50.4263,
+    "longitude": 30.5625,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": false,
+    "description": "Великий музейний та меморіальний комплекс",
+    "rating": 4.8,
+    "visitDuration": 115,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/%D0%9C%D0%BE%D0%BD%D1%83%D0%BC%D0%B5%D0%BD%D1%82_%D1%82%D0%B0_%D0%BF%D1%80%D0%B0%D0%BF%D0%BE%D1%80.jpg/960px-%D0%9C%D0%BE%D0%BD%D1%83%D0%BC%D0%B5%D0%BD%D1%82_%D1%82%D0%B0_%D0%BF%D1%80%D0%B0%D0%BF%D0%BE%D1%80.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Museum_of_the_History_of_Ukraine_in_WWII_54401939395_%28Alek_Barovi%C4%87_2022-02-19%29_S.A._Kovpak_Gymnastyorka%2C_O.F._Fedorov_military_awards%2C_Kovpak_Certificate%2C_etc.jpg/960px-thumbnail.jpg"
+    ],
+    "nearest_metro": "Звіринецька",
+    "place_id": "ChIJ1_NT-3bP1EARDtb2cgbpLe4",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ1_NT-3bP1EARDtb2cgbpLe4"
+  },
+  {
+    "id": 23,
+    "name": "PinchukArtCentre",
+    "name_en": "PinchukArtCentre",
+    "latitude": 50.4422,
+    "longitude": 30.5209,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": false,
+    "description": "Центр сучасного мистецтва",
+    "rating": 4.6,
+    "visitDuration": 110,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/PinchukArtCentre.JPG/960px-PinchukArtCentre.JPG",
+      "https://upload.wikimedia.org/wikipedia/commons/9/95/Shevchenko_calls_Klitschko_for_public_discussion_on_prostitution_in_Ukraine.jpg"
+    ],
+    "nearest_metro": "Хрещатик",
+    "place_id": "ChIJtWr-bv_O1EAR6wjSSSldFec",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJtWr-bv_O1EAR6wjSSSldFec"
+  },
+  {
+    "id": 24,
+    "name": "Мистецький арсенал",
+    "name_en": "Mystetskyi Arsenal",
+    "latitude": 50.4349,
+    "longitude": 30.551,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": false,
+    "description": "Великий арт-центр і виставковий простір",
+    "rating": 4.7,
+    "visitDuration": 110,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Mystetskyi_Arsenal_in_Kyiv.jpg/960px-Mystetskyi_Arsenal_in_Kyiv.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Mystetskyi_Arsenal%2C_Kiev._-_Pechersk_869.jpg/960px-Mystetskyi_Arsenal%2C_Kiev._-_Pechersk_869.jpg"
+    ],
+    "nearest_metro": "Арсенальна",
+    "place_id": "ChIJNyS47aDP1EARvgCF55bf3j4",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJNyS47aDP1EARvgCF55bf3j4"
+  },
+  {
+    "id": 25,
+    "name": "Ботанічний сад ім. Гришка",
+    "name_en": "M.M. Gryshko National Botanical Garden",
+    "latitude": 50.4106,
+    "longitude": 30.563,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Великий ботанічний сад на Печерську",
+    "rating": 4.9,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Lilacs_Gardens_in_Kyiv.jpg/960px-Lilacs_Gardens_in_Kyiv.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Benches_at_Hryshko_National_Botanical_Garden.jpg/960px-Benches_at_Hryshko_National_Botanical_Garden.jpg"
+    ],
+    "nearest_metro": "Звіринецька",
+    "place_id": "ChIJWxt4AlHO1EARN6yW5_vKS60",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJWxt4AlHO1EARN6yW5_vKS60"
+  },
+  {
+    "id": 26,
+    "name": "Маріїнський парк",
+    "name_en": "Mariinsky Park",
+    "latitude": 50.449,
+    "longitude": 30.5362,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Парк біля Маріїнського палацу",
+    "rating": 4.8,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/6/6a/Fountain_in_Mariyinsky_Park.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Mariinsky_park.jpg/960px-Mariinsky_park.jpg"
+    ],
+    "nearest_metro": "Арсенальна",
+    "place_id": "ChIJ50j3KqzP1EARjDA3fn8hQ1A",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ50j3KqzP1EARjDA3fn8hQ1A"
+  },
+  {
+    "id": 27,
+    "name": "Парк Вічної Слави",
+    "name_en": "Park of Eternal Glory",
+    "latitude": 50.4412,
+    "longitude": 30.5467,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Парк із панорамними видами на Лівий берег",
+    "rating": 4.7,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/%D0%9C%D0%B5%D0%BC%D0%BE%D1%80%D1%96%D0%B0%D0%BB_%D0%92%D1%96%D1%87%D0%BD%D0%BE%D1%97_%D0%A1%D0%BB%D0%B0%D0%B2%D0%B834.jpg/960px-%D0%9C%D0%B5%D0%BC%D0%BE%D1%80%D1%96%D0%B0%D0%BB_%D0%92%D1%96%D1%87%D0%BD%D0%BE%D1%97_%D0%A1%D0%BB%D0%B0%D0%B2%D0%B834.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Tomb_of_Vitruk._-_Alley_of_Heroes._Slava_Park%2C_Pechersk_Raion%2C_Kiev_.jpg/960px-Tomb_of_Vitruk._-_Alley_of_Heroes._Slava_Park%2C_Pechersk_Raion%2C_Kiev_.jpg"
+    ],
+    "nearest_metro": "Арсенальна",
+    "place_id": "ChIJrQFVJaHP1EAR6htwXpSDs8Y",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJrQFVJaHP1EAR6htwXpSDs8Y"
+  },
+  {
+    "id": 28,
+    "name": "Sho",
+    "name_en": "Sho Restaurant",
+    "latitude": 50.4238,
+    "longitude": 30.5371,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": false,
+    "description": "Сучасна українська кухня",
+    "rating": 4.6,
+    "visitDuration": 75,
+    "imageUrls": [],
+    "nearest_metro": "Кловська",
+    "place_id": "ChIJ5Yz1ZwfP1EARSNjYL9MgxvA",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ5Yz1ZwfP1EARSNjYL9MgxvA"
+  },
+  {
+    "id": 29,
+    "name": "Чорноморка (Печерськ)",
+    "name_en": "Chornomorka (Pechersk)",
+    "latitude": 50.4279,
+    "longitude": 30.5352,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": false,
+    "description": "Морепродукти у Печерському районі",
+    "rating": 4.5,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://live.staticflickr.com/65535/49570218411_f838daa4e9_b.jpg",
+      "https://live.staticflickr.com/65535/49570447857_d8c08f5663_b.jpg"
+    ],
+    "nearest_metro": "Печерська",
+    "place_id": "ChIJy3gqpUvP1EARWs4eCSGAkxg",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJy3gqpUvP1EARWs4eCSGAkxg"
+  },
+  {
+    "id": 30,
+    "name": "Андріївська церква",
+    "name_en": "St. Andrew's Church",
+    "latitude": 50.4595,
+    "longitude": 30.5181,
+    "category": "cathedral",
+    "tags": [
+      "RELIGION"
+    ],
+    "isLeftBank": false,
+    "description": "Барокова пам'ятка на Андріївському узвозі",
+    "rating": 4.8,
+    "visitDuration": 65,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Kiev_05.jpg/960px-Kiev_05.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/St_Andrews_Church%2C_Kyiv_2017.jpg/960px-St_Andrews_Church%2C_Kyiv_2017.jpg"
+    ],
+    "nearest_metro": "Поштова площа",
+    "place_id": "ChIJl2VbkkPO1EARqh4SWfjoCqQ",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJl2VbkkPO1EARqh4SWfjoCqQ"
+  },
+  {
+    "id": 31,
+    "name": "Церква Успіння Богородиці Пирогощої",
+    "name_en": "Church of the Dormition of the Mother of God Pirohoshcha",
+    "latitude": 50.4642,
+    "longitude": 30.5154,
+    "category": "cathedral",
+    "tags": [
+      "RELIGION"
+    ],
+    "isLeftBank": false,
+    "description": "Відтворена стародавня церква на Подолі",
+    "rating": 4.7,
+    "visitDuration": 60,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Podil%2C_Kiev%2C_Ukraine%2C_04070_-_panoramio_%2824%29.jpg/960px-Podil%2C_Kiev%2C_Ukraine%2C_04070_-_panoramio_%2824%29.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Podil%2C_Kiev%2C_Ukraine%2C_04070_-_panoramio_%2832%29.jpg/960px-Podil%2C_Kiev%2C_Ukraine%2C_04070_-_panoramio_%2832%29.jpg"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJaZGjyEHO1EAR7WCm7QgXMH8",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJaZGjyEHO1EAR7WCm7QgXMH8"
+  },
+  {
+    "id": 32,
+    "name": "Театр на Подолі",
+    "name_en": "Kyiv Academic Drama Theater on Podil",
+    "latitude": 50.4662,
+    "longitude": 30.5176,
+    "category": "theater",
+    "tags": [
+      "THEATER"
+    ],
+    "isLeftBank": false,
+    "description": "Сучасна театральна сцена на Подолі",
+    "rating": 4.7,
+    "visitDuration": 145,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/%D0%A2%D0%B5%D0%B0%D1%82%D1%80_%D0%BD%D0%B0_%D0%9F%D0%BE%D0%B4%D0%BE%D0%BB%D1%96.jpg/960px-%D0%A2%D0%B5%D0%B0%D1%82%D1%80_%D0%BD%D0%B0_%D0%9F%D0%BE%D0%B4%D0%BE%D0%BB%D1%96.jpg",
+      "https://live.staticflickr.com/4227/34276839174_742c0ee5fb_b.jpg"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJW0egR0LO1EARNyCVGhSnIpU",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJW0egR0LO1EARNyCVGhSnIpU"
+  },
+  {
+    "id": 33,
+    "name": "Театр Колесо",
+    "name_en": "Koleso Theater",
+    "latitude": 50.459,
+    "longitude": 30.5177,
+    "category": "theater",
+    "tags": [
+      "THEATER"
+    ],
+    "isLeftBank": false,
+    "description": "Камерний театр на Андріївському узвозі",
+    "rating": 4.6,
+    "visitDuration": 145,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/%D0%A2%D0%B5%D0%B0%D1%82%D1%80_%D0%9A%D0%BE%D0%BB%D0%B5%D1%81%D0%BE.JPG/960px-%D0%A2%D0%B5%D0%B0%D1%82%D1%80_%D0%9A%D0%BE%D0%BB%D0%B5%D1%81%D0%BE.JPG",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/%D0%9A%D0%B8%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D0%B0%D0%BA%D0%B0%D0%B4%D0%B5%D0%BC%D1%96%D1%87%D0%BD%D0%B8%D0%B9_%D1%82%D0%B5%D0%B0%D1%82%D1%80_%D0%9A%D0%BE%D0%BB%D0%B5%D1%81%D0%BE%2C_%D0%BC%D1%83%D0%BB%D1%8C%D1%82%D0%B8%D0%B5%D0%BA%D1%81%D0%BF%D0%BE%D0%B7%D0%B8%D1%86%D1%96%D1%8F.jpg/960px-%D0%9A%D0%B8%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D0%B0%D0%BA%D0%B0%D0%B4%D0%B5%D0%BC%D1%96%D1%87%D0%BD%D0%B8%D0%B9_%D1%82%D0%B5%D0%B0%D1%82%D1%80_%D0%9A%D0%BE%D0%BB%D0%B5%D1%81%D0%BE%2C_%D0%BC%D1%83%D0%BB%D1%8C%D1%82%D0%B8%D0%B5%D0%BA%D1%81%D0%BF%D0%BE%D0%B7%D0%B8%D1%86%D1%96%D1%8F.jpg"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJCf45JkLO1EAR_spenTgkn6I",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJCf45JkLO1EAR_spenTgkn6I"
+  },
+  {
+    "id": 34,
+    "name": "Музей Булгакова",
+    "name_en": "Bulgakov Museum",
+    "latitude": 50.4592,
+    "longitude": 30.5186,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": false,
+    "description": "Музей на Андріївському узвозі",
+    "rating": 4.5,
+    "visitDuration": 110,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/%D0%A1%D0%B0%D0%B4%D0%B8%D0%B1%D0%B0_%D0%B6%D0%B8%D1%82%D0%BB%D0%BE%D0%B2%D0%B0%2C_%D0%B2_%D1%8F%D0%BA%D1%96%D0%B9_%D0%BF%D1%80%D0%BE%D0%B6%D0%B8%D0%B2%D0%B0%D0%B2_%D0%BF%D0%B8%D1%81%D1%8C%D0%BC%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA_%D0%9C._%D0%9F._%D0%91%D1%83%D0%BB%D0%B3%D0%B0%D0%BA%D0%BE%D0%B2_%D0%9A%D0%B8%D1%97%D0%B2_%D0%90%D0%BD%D0%B4%D1%80%D1%96%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D1%83%D0%B7%D0%B2%D1%96%D0%B7%2C_13.JPG/960px-%D0%A1%D0%B0%D0%B4%D0%B8%D0%B1%D0%B0_%D0%B6%D0%B8%D1%82%D0%BB%D0%BE%D0%B2%D0%B0%2C_%D0%B2_%D1%8F%D0%BA%D1%96%D0%B9_%D0%BF%D1%80%D0%BE%D0%B6%D0%B8%D0%B2%D0%B0%D0%B2_%D0%BF%D0%B8%D1%81%D1%8C%D0%BC%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA_%D0%9C._%D0%9F._%D0%91%D1%83%D0%BB%D0%B3%D0%B0%D0%BA%D0%BE%D0%B2_%D0%9A%D0%B8%D1%97%D0%B2_%D0%90%D0%BD%D0%B4%D1%80%D1%96%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D1%83%D0%B7%D0%B2%D1%96%D0%B7%2C_13.JPG",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Mikhail_Bulgakov%27s_museum_entrance.JPG/960px-Mikhail_Bulgakov%27s_museum_entrance.JPG"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJK2AcO0LO1EARQsUHRy8U-LE",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJK2AcO0LO1EARQsUHRy8U-LE"
+  },
+  {
+    "id": 35,
+    "name": "Музей Аптека",
+    "name_en": "Pharmacy Museum",
+    "latitude": 50.4646,
+    "longitude": 30.5149,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": false,
+    "description": "Історичний аптечний музей на Подолі",
+    "rating": 4.5,
+    "visitDuration": 110,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/%D0%9F%D0%BE%D0%B3%D1%80%D1%83%D0%B4%D0%B4%D1%8F_%D0%93%D0%B0%D0%BB%D0%B5%D0%BD%D0%B0_%D0%B2_%D0%BA%D0%B8%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D1%96%D0%B9_%D0%B0%D0%BF%D1%82%D0%B5%D1%86%D1%96-%D0%BC%D1%83%D0%B7%D0%B5%D1%97.jpg/960px-%D0%9F%D0%BE%D0%B3%D1%80%D1%83%D0%B4%D0%B4%D1%8F_%D0%93%D0%B0%D0%BB%D0%B5%D0%BD%D0%B0_%D0%B2_%D0%BA%D0%B8%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D1%96%D0%B9_%D0%B0%D0%BF%D1%82%D0%B5%D1%86%D1%96-%D0%BC%D1%83%D0%B7%D0%B5%D1%97.jpg",
+      "https://live.staticflickr.com/65535/50677908503_7b76daf010_b.jpg"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJUcg-ZWrO1EARtHmj3-wEVok",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJUcg-ZWrO1EARtHmj3-wEVok"
+  },
+  {
+    "id": 36,
+    "name": "Контрактова площа",
+    "name_en": "Kontraktova Square",
+    "latitude": 50.4657,
+    "longitude": 30.5152,
+    "category": "square",
+    "tags": [
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Історичний центр Подолу та важлива площа міста",
+    "rating": 4.7,
+    "visitDuration": 45,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Contracts_Square_Kyiv_2013.png/960px-Contracts_Square_Kyiv_2013.png",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Kontraktova_Square%2C_Podil%2C_Kyiv.jpg/960px-Kontraktova_Square%2C_Podil%2C_Kyiv.jpg"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJ8zxuNUDO1EARkmuqfOCAj_A",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ8zxuNUDO1EARkmuqfOCAj_A"
+  },
+  {
+    "id": 37,
+    "name": "Канапа",
+    "name_en": "Kanapa Restaurant",
+    "latitude": 50.459,
+    "longitude": 30.5184,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": false,
+    "description": "Ресторан сучасної української кухні на узвозі",
+    "rating": 4.6,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://live.staticflickr.com/8703/17086264791_4955563725_b.jpg",
+      "https://live.staticflickr.com/65535/51945896379_fa78a4dc4a_b.jpg"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJwfVVxkPO1EARXwjd2pI8qh0",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJwfVVxkPO1EARXwjd2pI8qh0"
+  },
+  {
+    "id": 38,
+    "name": "За двома зайцями",
+    "name_en": "Za Dvoma Zaitsiamy",
+    "latitude": 50.4588,
+    "longitude": 30.5175,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": false,
+    "description": "Ресторан на Андріївському узвозі",
+    "rating": 4.4,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://live.staticflickr.com/65535/51944600727_0fa901ddc1_b.jpg",
+      "https://live.staticflickr.com/65535/51936784585_4ef3072326_b.jpg"
+    ],
+    "nearest_metro": "Контрактова площа",
+    "place_id": "ChIJBwYVlkPO1EARQiKqje6Rhv8",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJBwYVlkPO1EARQiKqje6Rhv8"
+  },
+  {
+    "id": 39,
+    "name": "Експоцентр України (ВДНГ)",
+    "name_en": "Expocenter of Ukraine (VDNG)",
+    "latitude": 50.3829,
+    "longitude": 30.4776,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Великий парковий та виставковий простір",
+    "rating": 4.7,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/%D0%9A%D0%BE%D0%BC%D0%BF%D0%BB%D0%B5%D0%BA%D1%81_%D0%95%D0%BA%D1%81%D0%BF%D0%BE%D1%86%D0%B5%D0%BD%D1%82%D1%80_%D0%A3%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D0%B8.jpg/960px-%D0%9A%D0%BE%D0%BC%D0%BF%D0%BB%D0%B5%D0%BA%D1%81_%D0%95%D0%BA%D1%81%D0%BF%D0%BE%D1%86%D0%B5%D0%BD%D1%82%D1%80_%D0%A3%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D0%B8.jpg",
+      "https://live.staticflickr.com/3948/15440065859_44292e4cf0_b.jpg"
+    ],
+    "nearest_metro": "Виставковий центр",
+    "place_id": "ChIJ6fAg9O7I1EARe0M-SYa5ogM",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ6fAg9O7I1EARe0M-SYa5ogM"
+  },
+  {
+    "id": 40,
+    "name": "Національний природний парк Голосіївський",
+    "name_en": "Holosiivskyi National Nature Park",
+    "latitude": 50.3737,
+    "longitude": 30.5204,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Природний парк у межах міста",
+    "rating": 4.8,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/3/30/%D0%93%D0%BE%D1%81%D0%BE%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9_%D0%BF%D0%B0%D1%80%D0%BA.JPG",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Kyiv_-_Holosiivskyi_forest_250406.jpg/960px-Kyiv_-_Holosiivskyi_forest_250406.jpg"
+    ],
+    "nearest_metro": "Голосіївська",
+    "place_id": "ChIJs9BLVbbI1EARXFpuNG04w2M",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJs9BLVbbI1EARXFpuNG04w2M"
+  },
+  {
+    "id": 41,
+    "name": "Парк Феофанія",
+    "name_en": "Feofaniya Park",
+    "latitude": 50.3375,
+    "longitude": 30.5255,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Ландшафтний парк із каскадом ставків",
+    "rating": 4.8,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Feofania_01_dgri.jpg/960px-Feofania_01_dgri.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Kyiv_Feofania_park_-_View.jpg/960px-Kyiv_Feofania_park_-_View.jpg"
+    ],
+    "nearest_metro": "Теремки",
+    "place_id": "ChIJ0fs4eHXI1EARw1NwsXkbKCo",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ0fs4eHXI1EARw1NwsXkbKCo"
+  },
+  {
+    "id": 42,
+    "name": "Музей просто неба Пирогів",
+    "name_en": "Pyrohiv Open-Air Museum",
+    "latitude": 50.3547,
+    "longitude": 30.5319,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": false,
+    "description": "Національний музей народної архітектури та побуту",
+    "rating": 4.8,
+    "visitDuration": 115,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/%D0%9F%D0%B8%D1%80%D0%BE%D0%B3%D1%96%D0%B2_%D0%A1%D0%BE%D0%BB%D0%BE%D0%B2%27%D1%97%D0%BD%D0%B0.jpg/960px-%D0%9F%D0%B8%D1%80%D0%BE%D0%B3%D1%96%D0%B2_%D0%A1%D0%BE%D0%BB%D0%BE%D0%B2%27%D1%97%D0%BD%D0%B0.jpg",
+      "https://live.staticflickr.com/65535/50901146602_705888825c_b.jpg"
+    ],
+    "nearest_metro": "Теремки",
+    "place_id": "ChIJsTujUCvG1EAR9riaOjhjFi0",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJsTujUCvG1EAR9riaOjhjFi0"
+  },
+  {
+    "id": 43,
+    "name": "Прага",
+    "name_en": "Praha Restaurant",
+    "latitude": 50.3818,
+    "longitude": 30.4689,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": false,
+    "description": "Ресторан у парковій зоні біля ВДНГ",
+    "rating": 4.5,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://live.staticflickr.com/5692/22498340030_7305b694d8_b.jpg"
+    ],
+    "nearest_metro": "Виставковий центр",
+    "place_id": "ChIJp356GOnI1EAROei_0GFh_7o",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJp356GOnI1EAROei_0GFh_7o"
+  },
+  {
+    "id": 44,
+    "name": "Парк Наталка",
+    "name_en": "Natalka Park",
+    "latitude": 50.4997,
+    "longitude": 30.5218,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": false,
+    "description": "Сучасний парк на Оболонській набережній",
+    "rating": 4.9,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Handmade_birdhouse.jpg/960px-Handmade_birdhouse.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Lonely_dog_in_a_park.jpg/960px-Lonely_dog_in_a_park.jpg"
+    ],
+    "nearest_metro": "Оболонь",
+    "place_id": "ChIJNaEds_vR1EARuXaAziMUlRc",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJNaEds_vR1EARuXaAziMUlRc"
+  },
+  {
+    "id": 45,
+    "name": "Оболонська набережна",
+    "name_en": "Obolon Embankment",
+    "latitude": 50.5112,
+    "longitude": 30.5186,
+    "category": "embankment",
+    "tags": [
+      "MONUMENT"
+    ],
+    "isLeftBank": false,
+    "description": "Прогулянкова набережна Оболоні",
+    "rating": 4.7,
+    "visitDuration": 45,
+    "imageUrls": [
+      "https://live.staticflickr.com/8417/29784710753_ef19ccb0f9_b.jpg",
+      "https://live.staticflickr.com/65535/49815211693_13af322231_b.jpg"
+    ],
+    "nearest_metro": "Мінська",
+    "place_id": "ChIJ383d-BfS1EARGp1N1o2Gi5g",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ383d-BfS1EARGp1N1o2Gi5g"
+  },
+  {
+    "id": 46,
+    "name": "Патріарший собор Воскресіння Христового",
+    "name_en": "Patriarchal Cathedral of the Resurrection of Christ",
+    "latitude": 50.4519,
+    "longitude": 30.5987,
+    "category": "cathedral",
+    "tags": [
+      "RELIGION"
+    ],
+    "isLeftBank": true,
+    "description": "Головний собор УГКЦ біля Лівобережної",
+    "rating": 4.8,
+    "visitDuration": 65,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/en/thumb/e/e0/%D0%A1%D0%BE%D0%B1%D0%BE%D1%80_%D0%92%D0%BE%D1%81%D0%BA%D1%80%D0%B5%D1%81%D0%B5%D0%BD%D0%B8%D1%8F_%D0%A5%D1%80%D0%B8%D1%81%D1%82%D0%BE%D0%B2%D0%B0_%D0%9A%D0%B8%D0%B5%D0%B2_1.jpg/960px-%D0%A1%D0%BE%D0%B1%D0%BE%D1%80_%D0%92%D0%BE%D1%81%D0%BA%D1%80%D0%B5%D1%81%D0%B5%D0%BD%D0%B8%D1%8F_%D0%A5%D1%80%D0%B8%D1%81%D1%82%D0%BE%D0%B2%D0%B0_%D0%9A%D0%B8%D0%B5%D0%B2_1.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Kiev_Dnipro_area_church.jpg/960px-Kiev_Dnipro_area_church.jpg"
+    ],
+    "nearest_metro": "Лівобережна",
+    "place_id": "ChIJEbViZOnP1EAR-TcPv7aQKZM",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJEbViZOnP1EAR-TcPv7aQKZM"
+  },
+  {
+    "id": 47,
+    "name": "Театр драми і комедії на лівому березі",
+    "name_en": "Left Bank Drama and Comedy Theater",
+    "latitude": 50.4504,
+    "longitude": 30.5996,
+    "category": "theater",
+    "tags": [
+      "THEATER"
+    ],
+    "isLeftBank": true,
+    "description": "Академічний театр на Лівому березі",
+    "rating": 4.7,
+    "visitDuration": 145,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/7/75/%D0%A2%D0%B5%D0%B0%D1%82%D1%801111111111.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/2020-05-11_13-24-15_Mantach.jpg/960px-2020-05-11_13-24-15_Mantach.jpg"
+    ],
+    "nearest_metro": "Лівобережна",
+    "place_id": "ChIJTWMR8u_P1EARH5hpHy9fymY",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJTWMR8u_P1EARH5hpHy9fymY"
+  },
+  {
+    "id": 48,
+    "name": "Парк Перемога",
+    "name_en": "Peremoha Park",
+    "latitude": 50.4693,
+    "longitude": 30.6076,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Великий рекреаційний парк Дніпровського району",
+    "rating": 4.7,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://live.staticflickr.com/8398/8649776592_11e48bbe1b_b.jpg",
+      "https://live.staticflickr.com/8537/8648672479_4c52d9a6ec_b.jpg"
+    ],
+    "nearest_metro": "Дарниця",
+    "place_id": "ChIJw_fKcQDP1EARgXtyimJzl10",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJw_fKcQDP1EARgXtyimJzl10"
+  },
+  {
+    "id": 49,
+    "name": "Гідропарк",
+    "name_en": "Hydropark",
+    "latitude": 50.446,
+    "longitude": 30.5765,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Велика зона відпочинку на островах Дніпра",
+    "rating": 4.5,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Hidropark_beach.jpg/960px-Hidropark_beach.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Venetian_channel_and_beach._View_from_the_Venetian_bridge._Kyiv%2C_Ukraine.jpg/960px-Venetian_channel_and_beach._View_from_the_Venetian_bridge._Kyiv%2C_Ukraine.jpg"
+    ],
+    "nearest_metro": "Гідропарк",
+    "place_id": "ChIJK-svrJXP1EARGDraxwVXki8",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJK-svrJXP1EARGDraxwVXki8"
+  },
+  {
+    "id": 50,
+    "name": "Київ в мініатюрі",
+    "name_en": "Kyiv in Miniature",
+    "latitude": 50.4553,
+    "longitude": 30.5797,
+    "category": "museum",
+    "tags": [
+      "MUSEUM"
+    ],
+    "isLeftBank": true,
+    "description": "Парк-музей макетів відомих будівель Києва",
+    "rating": 4.5,
+    "visitDuration": 110,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/MiniKiev.Olga.JPG/960px-MiniKiev.Olga.JPG",
+      "https://live.staticflickr.com/8696/27723673014_2a992b389a_b.jpg"
+    ],
+    "nearest_metro": "Гідропарк",
+    "place_id": "ChIJ5TFH6Jfa1EARipdvWbue2mo",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ5TFH6Jfa1EARipdvWbue2mo"
+  },
+  {
+    "id": 51,
+    "name": "Русанівська набережна",
+    "name_en": "Rusanivska Embankment",
+    "latitude": 50.4445,
+    "longitude": 30.5945,
+    "category": "embankment",
+    "tags": [
+      "MONUMENT"
+    ],
+    "isLeftBank": true,
+    "description": "Набережна з фонтанами і краєвидами",
+    "rating": 4.7,
+    "visitDuration": 45,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/2019-07-23_Rusanivka%2C_Kyiv.jpg/960px-2019-07-23_Rusanivka%2C_Kyiv.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/2018-07-13_Aerial_photograph_of_Dniprovska_Embankment_and_Sobornosti_avenue_intersection.jpg/960px-2018-07-13_Aerial_photograph_of_Dniprovska_Embankment_and_Sobornosti_avenue_intersection.jpg"
+    ],
+    "nearest_metro": "Лівобережна",
+    "place_id": "ChIJv6JqoI7P1EARPl9HQMT4aqk",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJv6JqoI7P1EARPl9HQMT4aqk"
+  },
+  {
+    "id": 52,
+    "name": "River Grill",
+    "name_en": "River Grill",
+    "latitude": 50.4429,
+    "longitude": 30.5943,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": true,
+    "description": "Ресторан на Русанівській набережній",
+    "rating": 4.5,
+    "visitDuration": 75,
+    "imageUrls": [],
+    "nearest_metro": "Лівобережна",
+    "place_id": "ChIJFfK3xIjP1EARqC2LJjBvchw",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJFfK3xIjP1EARqC2LJjBvchw"
+  },
+  {
+    "id": 53,
+    "name": "Парк Партизанської слави",
+    "name_en": "Partisan Glory Park",
+    "latitude": 50.4119,
+    "longitude": 30.664,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Великий лісопарк з озерами у Дарницькому районі",
+    "rating": 4.8,
+    "visitDuration": 80,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/%D0%9A%D0%B0%D0%BC%D1%96%D0%BD%D1%8C_%D0%B7_%D1%82%D0%B0%D0%B1%D0%BB%D0%B8%D1%87%D0%BA%D0%BE%D1%8E.jpg/960px-%D0%9A%D0%B0%D0%BC%D1%96%D0%BD%D1%8C_%D0%B7_%D1%82%D0%B0%D0%B1%D0%BB%D0%B8%D1%87%D0%BA%D0%BE%D1%8E.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/%D0%9F%D0%B0%D0%BC%27%D1%8F%D1%82%D0%BD%D0%B8%D0%B9_%D0%B7%D0%BD%D0%B0%D0%BA_%D0%BD%D0%B0_%D1%87%D0%B5%D1%81%D1%82%D1%8C_%D0%B1%D0%BE%D0%B9%D0%BE%D0%B2%D0%BE%D1%97_%D1%81%D0%BF%D1%96%D0%B2%D0%B4%D1%80%D1%83%D0%B6%D0%BD%D0%BE%D1%81%D1%82%D1%96_%D0%BF%D0%B0%D1%80%D1%82%D0%B8%D0%B7%D0%B0%D0%BD%D1%81%D1%8C%D0%BA%D0%B8%D1%85_%D0%B1%D1%80%D0%B8%D0%B3%D0%B0%D0%B4.jpg/960px-%D0%9F%D0%B0%D0%BC%27%D1%8F%D1%82%D0%BD%D0%B8%D0%B9_%D0%B7%D0%BD%D0%B0%D0%BA_%D0%BD%D0%B0_%D1%87%D0%B5%D1%81%D1%82%D1%8C_%D0%B1%D0%BE%D0%B9%D0%BE%D0%B2%D0%BE%D1%97_%D1%81%D0%BF%D1%96%D0%B2%D0%B4%D1%80%D1%83%D0%B6%D0%BD%D0%BE%D1%81%D1%82%D1%96_%D0%BF%D0%B0%D1%80%D1%82%D0%B8%D0%B7%D0%B0%D0%BD%D1%81%D1%8C%D0%BA%D0%B8%D1%85_%D0%B1%D1%80%D0%B8%D0%B3%D0%B0%D0%B4.jpg"
+    ],
+    "nearest_metro": "Бориспільська",
+    "place_id": "ChIJHX6yKunE1EARPC14dDkmDaw",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJHX6yKunE1EARPC14dDkmDaw"
+  },
+  {
+    "id": 54,
+    "name": "Фітнес-парк Озеро Лебедине",
+    "name_en": "Lebedyne Lake Fitness Park",
+    "latitude": 50.3997,
+    "longitude": 30.6295,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Сучасний рекреаційний простір на Позняках",
+    "rating": 4.6,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://live.staticflickr.com/65535/53509120347_9b975eb7c8_b.jpg",
+      "https://live.staticflickr.com/65535/53510011766_31e64047b8_b.jpg"
+    ],
+    "nearest_metro": "Харківська",
+    "place_id": "ChIJP-43SpXF1EARdUW8nqM9XDw",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJP-43SpXF1EARdUW8nqM9XDw"
+  },
+  {
+    "id": 55,
+    "name": "Сито-П'яно (Осокорки)",
+    "name_en": "Syto-Pyano (Osokorky)",
+    "latitude": 50.3958,
+    "longitude": 30.6164,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": true,
+    "description": "Популярний ресторан у Дарницькому районі",
+    "rating": 4.4,
+    "visitDuration": 70,
+    "imageUrls": [],
+    "nearest_metro": "Осокорки",
+    "place_id": "ChIJMSJbm6PF1EARjddAjcJVsco",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJMSJbm6PF1EARjddAjcJVsco"
+  },
+  {
+    "id": 56,
+    "name": "Чорноморка (Княжий Затон)",
+    "name_en": "Chornomorka (Kniazhyi Zaton)",
+    "latitude": 50.3955,
+    "longitude": 30.616,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": true,
+    "description": "Ресторан морепродуктів на Позняках",
+    "rating": 4.4,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://live.staticflickr.com/65535/49570447967_8f1b7959d3_b.jpg",
+      "https://live.staticflickr.com/65535/49570447857_d8c08f5663_b.jpg"
+    ],
+    "nearest_metro": "Осокорки",
+    "place_id": "ChIJr-KCOirF1EARbPFNx6P1lEY",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJr-KCOirF1EARbPFNx6P1lEY"
+  },
+  {
+    "id": 57,
+    "name": "Tarantino Italian&Grill",
+    "name_en": "Tarantino Italian&Grill",
+    "latitude": 50.4013,
+    "longitude": 30.629,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": true,
+    "description": "Італійська та гриль-кухня на Позняках",
+    "rating": 4.4,
+    "visitDuration": 70,
+    "imageUrls": [],
+    "nearest_metro": "Позняки",
+    "place_id": "ChIJF3DsyKzF1EARt9ICqTyEJ7Y",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJF3DsyKzF1EARt9ICqTyEJ7Y"
+  },
+  {
+    "id": 58,
+    "name": "Парк Кіото",
+    "name_en": "Kyoto Park",
+    "latitude": 50.4805,
+    "longitude": 30.6241,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Парк із найдовшою алеєю сакур в Україні",
+    "rating": 4.7,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Kyiv-Kyoto_park-guard_board.jpg/960px-Kyiv-Kyoto_park-guard_board.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Kyiv-Kyoto_park-view_in_November_2024-2.jpg/960px-Kyiv-Kyoto_park-view_in_November_2024-2.jpg"
+    ],
+    "nearest_metro": "Лісова",
+    "place_id": "ChIJn3E6HgDb1EARmVBh6FLrAro",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJn3E6HgDb1EARmVBh6FLrAro"
+  },
+  {
+    "id": 59,
+    "name": "Парк Муромець (X-Park)",
+    "name_en": "Muromets Park (X-Park)",
+    "latitude": 50.5098,
+    "longitude": 30.5448,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Парк активного відпочинку та екстриму",
+    "rating": 4.6,
+    "visitDuration": 75,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Krayniy_island_Kiev3.JPG/960px-Krayniy_island_Kiev3.JPG",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Desna_mouth_Dnieper.JPG/960px-Desna_mouth_Dnieper.JPG"
+    ],
+    "nearest_metro": "Почайна",
+    "place_id": "ChIJORR_1hDR1EARhfV8Xf2MTOk",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJORR_1hDR1EARhfV8Xf2MTOk"
+  },
+  {
+    "id": 60,
+    "name": "Парк Деснянський",
+    "name_en": "Desnianskyi Park",
+    "latitude": 50.5184,
+    "longitude": 30.6096,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Рекреаційний парк Троєщини",
+    "rating": 4.3,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/DesnianskyiRaionStadium.jpg/960px-DesnianskyiRaionStadium.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Kyiv_Warrior_Games_Desnianskyi_District_Stadium.jpg/960px-Kyiv_Warrior_Games_Desnianskyi_District_Stadium.jpg"
+    ],
+    "nearest_metro": "Чернігівська",
+    "place_id": "ChIJcZHo3gHQ1EARFuDSxD2nAm8",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJcZHo3gHQ1EARFuDSxD2nAm8"
+  },
+  {
+    "id": 61,
+    "name": "Парк Молодіжний",
+    "name_en": "Molodizhnyi Park",
+    "latitude": 50.5205,
+    "longitude": 30.6153,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Локальний парк для прогулянок на Троєщині",
+    "rating": 4.2,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/0/07/%D0%9F%D0%B0%D1%80%D0%BA-%D0%BF%D0%B0%D0%BC%E2%80%99%D1%8F%D1%82%D0%BA%D0%B0_%D1%81%D0%B0%D0%B4%D0%BE%D0%B2%D0%BE-%D0%BF%D0%B0%D1%80%D0%BA%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%BC%D0%B8%D1%81%D1%82%D0%B5%D1%86%D1%82%D0%B2%D0%B0_%D0%BC%D1%96%D1%81%D1%86%D0%B5%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B7%D0%BD%D0%B0%D1%87%D0%B5%D0%BD%D0%BD%D1%8F_%E2%80%9C%D0%9C%D0%BE%D0%BB%D0%BE%D0%B4%D1%96%D0%B6%D0%BD%D0%B8%D0%B9%E2%80%9D.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/%D0%9C%D0%BE%D0%BB%D0%BE%D0%B4%D1%96%D0%B6%D0%BD%D0%B8%D0%B9%2C_%D0%A4%D0%B0%D1%81%D1%82%D1%96%D0%B2%D1%81%D1%8C%D0%BA%D0%B0_%D0%BC%D1%96%D1%81%D1%8C%D0%BA%D0%B0_%D1%80%D0%B0%D0%B4%D0%B0_03.jpg/960px-%D0%9C%D0%BE%D0%BB%D0%BE%D0%B4%D1%96%D0%B6%D0%BD%D0%B8%D0%B9%2C_%D0%A4%D0%B0%D1%81%D1%82%D1%96%D0%B2%D1%81%D1%8C%D0%BA%D0%B0_%D0%BC%D1%96%D1%81%D1%8C%D0%BA%D0%B0_%D1%80%D0%B0%D0%B4%D0%B0_03.jpg"
+    ],
+    "nearest_metro": "Чернігівська",
+    "place_id": "ChIJhSQqawDR1EARFODaAYa7K-c",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJhSQqawDR1EARFODaAYa7K-c"
+  },
+  {
+    "id": 62,
+    "name": "Алмазне озеро",
+    "name_en": "Almazne Lake",
+    "latitude": 50.5222,
+    "longitude": 30.645,
+    "category": "park",
+    "tags": [
+      "PARK"
+    ],
+    "isLeftBank": true,
+    "description": "Одне з найбільших озер на північному сході Києва",
+    "rating": 4.4,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Diamond_Lake%2C_OR.jpg/960px-Diamond_Lake%2C_OR.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/%D0%90%D0%BB%D0%BC%D0%B0%D0%B7%D0%BD%D0%B5_%D0%BE%D0%B7%D0%B5%D1%80%D0%BE.jpg/960px-%D0%90%D0%BB%D0%BC%D0%B0%D0%B7%D0%BD%D0%B5_%D0%BE%D0%B7%D0%B5%D1%80%D0%BE.jpg"
+    ],
+    "nearest_metro": "Лісова",
+    "place_id": "ChIJJUgsn-3Q1EAR_o9zE_Um3Ag",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJJUgsn-3Q1EAR_o9zE_Um3Ag"
+  },
+  {
+    "id": 63,
+    "name": "Кінотеатр Флоренція",
+    "name_en": "Florentsia Cinema",
+    "latitude": 50.5229,
+    "longitude": 30.613,
+    "category": "theater",
+    "tags": [
+      "THEATER"
+    ],
+    "isLeftBank": true,
+    "description": "Культурний центр житлового масиву",
+    "rating": 4.2,
+    "visitDuration": 140,
+    "imageUrls": [],
+    "nearest_metro": "Почайна",
+    "place_id": "ChIJz4sH4u_R1EARzFrIPQIOBXQ",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJz4sH4u_R1EARzFrIPQIOBXQ"
+  },
+  {
+    "id": 64,
+    "name": "Свято-Троїцький храм (Троєщина)",
+    "name_en": "Holy Trinity Church (Troieshchyna)",
+    "latitude": 50.5192,
+    "longitude": 30.6189,
+    "category": "cathedral",
+    "tags": [
+      "RELIGION"
+    ],
+    "isLeftBank": true,
+    "description": "Православний храм у Деснянському районі",
+    "rating": 4.6,
+    "visitDuration": 60,
+    "imageUrls": [
+      "https://live.staticflickr.com/65535/50345732677_2f7bc1f7bd_b.jpg",
+      "https://live.staticflickr.com/65535/51784146297_6221ca6e06_b.jpg"
+    ],
+    "nearest_metro": "Почайна",
+    "place_id": "ChIJOUnq2KXR1EARJVG_BGk2KSQ",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJOUnq2KXR1EARJVG_BGk2KSQ"
+  },
+  {
+    "id": 65,
+    "name": "Євразія (пр-т Червоної Калини)",
+    "name_en": "Yevraziia (Chervonoi Kalyny Ave)",
+    "latitude": 50.52,
+    "longitude": 30.6158,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": true,
+    "description": "Мережевий ресторан у Деснянському районі",
+    "rating": 4.1,
+    "visitDuration": 70,
+    "imageUrls": [],
+    "nearest_metro": "Почайна",
+    "place_id": "ChIJxQs_lbPR1EAR8NRaDCc942c",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJxQs_lbPR1EAR8NRaDCc942c"
+  },
+  {
+    "id": 66,
+    "name": "Pesto Cafe (ТРЦ Район)",
+    "name_en": "Pesto Cafe (RayON Mall)",
+    "latitude": 50.5262,
+    "longitude": 30.6182,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": true,
+    "description": "Сімейний ресторан у ТРЦ Район",
+    "rating": 4.2,
+    "visitDuration": 70,
+    "imageUrls": [
+      "https://live.staticflickr.com/7263/8164805734_a81ee836f8_b.jpg",
+      "https://live.staticflickr.com/8345/8164771363_cb3aea663c_b.jpg"
+    ],
+    "nearest_metro": "Лісова",
+    "place_id": "ChIJDz5cIYnP1EARvgvPjj6-NrY",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJDz5cIYnP1EARvgvPjj6-NrY"
+  },
+  {
+    "id": 67,
+    "name": "Tbiliso",
+    "name_en": "Tbiliso",
+    "latitude": 50.513,
+    "longitude": 30.3635,
+    "category": "restaurant",
+    "tags": [
+      "RESTAURANT"
+    ],
+    "isLeftBank": true,
+    "description": "Ресторан кавказької кухні біля межі міста",
+    "rating": 4.2,
+    "visitDuration": 70,
+    "nearest_metro": "Осокорки",
+    "place_id": "ChIJGXjiK9_J1EARDivXZTXe9lk",
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJGXjiK9_J1EARDivXZTXe9lk",
+    "imageUrls": []
+  }
+]

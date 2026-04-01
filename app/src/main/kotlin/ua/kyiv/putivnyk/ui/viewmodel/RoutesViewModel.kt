@@ -20,10 +20,11 @@ import ua.kyiv.putivnyk.data.model.PlaceCategory
 import ua.kyiv.putivnyk.data.repository.PlaceRepository
 import ua.kyiv.putivnyk.data.repository.RouteRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
-import ua.kyiv.putivnyk.data.remote.WalkingDirectionsService
+import ua.kyiv.putivnyk.data.remote.WalkingDirectionsProvider
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteMetricsCalculator
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteOptimizer
 import kotlinx.coroutines.Job
+import ua.kyiv.putivnyk.platform.currentTimeMillis
 import javax.inject.Inject
 
 @HiltViewModel
@@ -32,7 +33,7 @@ class RoutesViewModel @Inject constructor(
     private val routeOptimizer: RouteOptimizer,
     private val userPreferenceRepository: UserPreferenceRepository,
     private val placeRepository: PlaceRepository,
-    private val walkingDirectionsService: WalkingDirectionsService
+    private val walkingDirectionsService: WalkingDirectionsProvider
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -72,8 +73,8 @@ class RoutesViewModel @Inject constructor(
         val waypoints = places.map { RoutePoint(it.latitude, it.longitude, it.name) }
         _walkingPreview.value = waypoints
         walkingPreviewJob = viewModelScope.launch {
-            val detailed = walkingDirectionsService.fetchWalkingRoute(waypoints)
-            _walkingPreview.value = detailed
+            val detailed = walkingDirectionsService.fetchWalkingRouteResult(waypoints)
+            _walkingPreview.value = detailed.geometry
         }
     }
 
@@ -176,7 +177,7 @@ class RoutesViewModel @Inject constructor(
 
     fun saveRoute(route: Route) {
         viewModelScope.launch {
-            routeRepository.saveRoute(RouteMetricsCalculator.recompute(route))
+            routeRepository.saveRoute(enrichRouteMetrics(route))
         }
     }
 
@@ -185,11 +186,9 @@ class RoutesViewModel @Inject constructor(
         viewModelScope.launch {
             val route = routeRepository.getRouteById(routeId) ?: return@launch
             routeRepository.updateRoute(
-                RouteMetricsCalculator.recompute(
-                    route.copy(
+                route.copy(
                     name = newName.trim(),
-                    updatedAt = System.currentTimeMillis()
-                    )
+                    updatedAt = currentTimeMillis()
                 )
             )
         }
@@ -199,9 +198,7 @@ class RoutesViewModel @Inject constructor(
         viewModelScope.launch {
             val route = routeRepository.getRouteById(routeId) ?: return@launch
             if (route.waypoints.isEmpty()) return@launch
-            routeRepository.updateRoute(
-                RouteMetricsCalculator.recompute(route.copy(waypoints = route.waypoints.dropLast(1)))
-            )
+            routeRepository.updateRoute(enrichRouteMetrics(route.copy(waypoints = route.waypoints.dropLast(1))))
         }
     }
 
@@ -210,18 +207,14 @@ class RoutesViewModel @Inject constructor(
             val route = routeRepository.getRouteById(routeId) ?: return@launch
             if (index !in route.waypoints.indices) return@launch
             val updated = route.waypoints.toMutableList().apply { removeAt(index) }
-            routeRepository.updateRoute(
-                RouteMetricsCalculator.recompute(route.copy(waypoints = updated))
-            )
+            routeRepository.updateRoute(enrichRouteMetrics(route.copy(waypoints = updated)))
         }
     }
 
     fun clearWaypoints(routeId: Long) {
         viewModelScope.launch {
             val route = routeRepository.getRouteById(routeId) ?: return@launch
-            routeRepository.updateRoute(
-                RouteMetricsCalculator.recompute(route.copy(waypoints = emptyList()))
-            )
+            routeRepository.updateRoute(enrichRouteMetrics(route.copy(waypoints = emptyList())))
         }
     }
 
@@ -236,7 +229,7 @@ class RoutesViewModel @Inject constructor(
                 name = name?.trim()?.takeIf { it.isNotBlank() }
             )
             if (RouteMetricsCalculator.isDuplicate(waypoint, route)) return@launch
-            routeRepository.updateRoute(RouteMetricsCalculator.withAppendedWaypoint(route, waypoint))
+            routeRepository.updateRoute(enrichRouteMetrics(RouteMetricsCalculator.withAppendedWaypoint(route, waypoint)))
         }
     }
 
@@ -246,7 +239,7 @@ class RoutesViewModel @Inject constructor(
             val optimized = withContext(Dispatchers.Default) {
                 routeOptimizer.optimizeWaypoints(route)
             }
-            routeRepository.updateRoute(optimized)
+            routeRepository.updateRoute(enrichRouteMetrics(optimized))
         }
     }
 
@@ -259,7 +252,7 @@ class RoutesViewModel @Inject constructor(
                 waypoints = route.waypoints.reversed(),
                 updatedAt = System.currentTimeMillis()
             )
-            routeRepository.updateRoute(reversed)
+            routeRepository.updateRoute(enrichRouteMetrics(reversed))
         }
     }
 
@@ -307,13 +300,36 @@ class RoutesViewModel @Inject constructor(
                         estimatedDuration = 0
                     )
                 )
-                routeRepository.saveRoute(route)
+                routeRepository.saveRoute(enrichRouteMetrics(route))
                 _createEvent.tryEmit(true)
             } catch (e: Exception) {
                 _createEvent.tryEmit(false)
             } finally {
                 _isCreatingRoute.value = false
             }
+        }
+    }
+
+    private suspend fun enrichRouteMetrics(route: Route): Route {
+        val points = buildList {
+            add(route.startPoint)
+            addAll(route.waypoints)
+            add(route.endPoint)
+        }
+        if (points.size < 2) return RouteMetricsCalculator.recompute(route)
+
+        val details = runCatching {
+            walkingDirectionsService.fetchWalkingRouteResult(points)
+        }.getOrNull()
+
+        return if (details != null) {
+            RouteMetricsCalculator.withMetrics(
+                route = route,
+                distanceMeters = details.distanceMeters ?: RouteMetricsCalculator.recompute(route).distance,
+                durationSeconds = details.durationSeconds
+            )
+        } else {
+            RouteMetricsCalculator.recompute(route)
         }
     }
 }

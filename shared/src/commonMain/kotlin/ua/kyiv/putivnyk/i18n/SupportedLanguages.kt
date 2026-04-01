@@ -1,5 +1,7 @@
 package ua.kyiv.putivnyk.i18n
 
+import kotlinx.serialization.Serializable
+
 object SupportedLanguages {
     val majorIso639_1: List<LanguageInfo> = listOf(
         LanguageInfo("uk", "Українська"),
@@ -23,6 +25,7 @@ object SupportedLanguages {
         majorIso639_1.any { it.isoCode.equals(isoCode, ignoreCase = true) }
 }
 
+@Serializable
 data class LanguageInfo(
     val isoCode: String,
     val displayName: String

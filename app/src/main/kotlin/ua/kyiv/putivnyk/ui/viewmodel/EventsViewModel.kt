@@ -13,10 +13,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import ua.kyiv.putivnyk.data.model.EventItem
 import ua.kyiv.putivnyk.data.model.SyncStatus
 import ua.kyiv.putivnyk.data.model.RoutePoint
-import ua.kyiv.putivnyk.data.remote.events.EventsBackendRepository
-import ua.kyiv.putivnyk.data.remote.events.model.EventItem
+import ua.kyiv.putivnyk.data.repository.EventLanguageSupport
+import ua.kyiv.putivnyk.data.repository.EventsRepository
 import ua.kyiv.putivnyk.data.repository.RouteRepository
 import ua.kyiv.putivnyk.data.repository.SyncStateRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
@@ -28,14 +29,12 @@ import javax.inject.Inject
 
 @HiltViewModel
 class EventsViewModel @Inject constructor(
-    private val eventsRepository: EventsBackendRepository,
+    private val eventsRepository: EventsRepository,
     private val userPreferenceRepository: UserPreferenceRepository,
     private val routeRepository: RouteRepository,
     private val syncStateRepository: SyncStateRepository,
     private val workManager: WorkManager
 ) : ViewModel() {
-
-    private val supportedEventLanguages = setOf("uk", "en")
 
     enum class EventSortMode {
         DATE,
@@ -188,7 +187,7 @@ class EventsViewModel @Inject constructor(
         } else {
             Locale.getDefault().language.ifBlank { "uk" }.lowercase()
         }
-        return if (preferred in supportedEventLanguages) preferred else "uk"
+        return EventLanguageSupport.normalizeBackendLanguage(preferred)
     }
 
     fun retrySyncInBackground() {

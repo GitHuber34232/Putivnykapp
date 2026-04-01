@@ -36,7 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import ua.kyiv.putivnyk.data.remote.events.model.EventItem
+import ua.kyiv.putivnyk.data.model.EventItem
 import ua.kyiv.putivnyk.ui.i18n.tr
 import ua.kyiv.putivnyk.ui.i18n.trDynamic
 import ua.kyiv.putivnyk.ui.components.ErrorRetryBanner

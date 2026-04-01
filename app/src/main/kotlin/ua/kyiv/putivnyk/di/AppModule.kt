@@ -15,6 +15,9 @@ import okhttp3.logging.HttpLoggingInterceptor
 import ua.kyiv.putivnyk.data.telemetry.AppTelemetry
 import ua.kyiv.putivnyk.data.telemetry.LogcatTelemetry
 import ua.kyiv.putivnyk.BuildConfig
+import ua.kyiv.putivnyk.domain.usecase.recommendation.RecommendationEngine
+import ua.kyiv.putivnyk.domain.usecase.routing.RouteOptimizer
+import ua.kyiv.putivnyk.domain.usecase.routing.SmartRouteBuilder
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -101,4 +104,17 @@ object AppModule {
     @Provides
     @Singleton
     fun provideTelemetry(): AppTelemetry = LogcatTelemetry()
+
+    @Provides
+    @Singleton
+    fun provideRouteOptimizer(): RouteOptimizer = RouteOptimizer()
+
+    @Provides
+    @Singleton
+    fun provideSmartRouteBuilder(routeOptimizer: RouteOptimizer): SmartRouteBuilder =
+        SmartRouteBuilder(routeOptimizer)
+
+    @Provides
+    @Singleton
+    fun provideRecommendationEngine(): RecommendationEngine = RecommendationEngine()
 }
