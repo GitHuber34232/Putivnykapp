@@ -24,6 +24,7 @@ import ua.kyiv.putivnyk.data.model.PlaceCategory
 import ua.kyiv.putivnyk.data.model.PlaceSortMode
 import ua.kyiv.putivnyk.data.model.Route
 import ua.kyiv.putivnyk.data.model.RoutePoint
+import ua.kyiv.putivnyk.data.model.TransportMode
 import ua.kyiv.putivnyk.data.repository.MapBookmarkRepository
 import ua.kyiv.putivnyk.data.repository.PlaceRepository
 import ua.kyiv.putivnyk.data.repository.RouteRepository
@@ -31,10 +32,12 @@ import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
 import ua.kyiv.putivnyk.data.remote.WalkingDirectionsService
 import ua.kyiv.putivnyk.domain.geo.NativeGeoEngine
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteMetricsCalculator
+import ua.kyiv.putivnyk.domain.usecase.routing.RouteNavigationMetrics
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteOptimizer
 import ua.kyiv.putivnyk.domain.usecase.routing.SmartRouteBuilder
 import kotlin.math.pow
 import kotlin.math.max
+import kotlin.math.abs
 import javax.inject.Inject
 
 @HiltViewModel
@@ -54,17 +57,20 @@ class MapViewModel @Inject constructor(
         private const val DEFAULT_ZOOM = 14
         private const val POI_PROMPT_RADIUS_METERS = 120.0
         private const val WAYPOINT_REACHED_RADIUS_METERS = 80.0
-        private const val WALKING_SPEED_METERS_PER_MIN = 83.3
+        private const val OFF_ROUTE_THRESHOLD_METERS = 40.0
 
-        private const val OFF_ROUTE_THRESHOLD_METERS = 50.0
+        private const val OFF_ROUTE_CONSECUTIVE_THRESHOLD = 2
 
-        private const val OFF_ROUTE_CONSECUTIVE_THRESHOLD = 3
-
-        private const val REROUTE_COOLDOWN_MS = 10_000L
+        private const val REROUTE_COOLDOWN_MS = 5_000L
 
         private const val MIN_SATELLITES_FOR_FIX = 4
 
         private const val LOW_SAT_CONSECUTIVE_THRESHOLD = 3
+
+        private const val TRANSPORT_SPEED_THRESHOLD_MS = 3.0
+        private const val TRANSPORT_REROUTE_COOLDOWN_MS = 3_000L
+        private const val TRANSPORT_WAYPOINT_REACH_RADIUS_METERS = 150.0
+        private const val SPEED_HISTORY_SIZE = 5
     }
 
     private val _selectedPlace = MutableStateFlow<Place?>(null)
@@ -139,6 +145,9 @@ class MapViewModel @Inject constructor(
 
     private val _remainingMinutes = MutableStateFlow(0)
     val remainingMinutes: StateFlow<Int> = _remainingMinutes
+
+    private val _routeProgressFraction = MutableStateFlow(0f)
+    val routeProgressFraction: StateFlow<Float> = _routeProgressFraction
 
     private val _distanceToNextWaypoint = MutableStateFlow(0.0)
     val distanceToNextWaypoint: StateFlow<Double> = _distanceToNextWaypoint
@@ -263,6 +272,9 @@ class MapViewModel @Inject constructor(
         )
 
     private val _walkingRouteGeometry = MutableStateFlow<List<RoutePoint>>(emptyList())
+    private val _fullWalkingRouteGeometry = MutableStateFlow<List<RoutePoint>>(emptyList())
+    private val _totalRouteDistanceMeters = MutableStateFlow(0.0)
+    private var _totalRouteDurationSeconds: Double? = null
 
     val routeLinePoints: StateFlow<List<RoutePoint>> = _walkingRouteGeometry
 
@@ -282,6 +294,19 @@ class MapViewModel @Inject constructor(
     private val _isRerouting = MutableStateFlow(false)
     val isRerouting: StateFlow<Boolean> = _isRerouting
 
+    private var lastLocationTimestamp: Long = 0L
+    private var lastLocationLat: Double = Double.NaN
+    private var lastLocationLon: Double = Double.NaN
+    private val speedHistory = ArrayDeque<Double>(SPEED_HISTORY_SIZE + 1)
+    private var routeProgressJob: Job? = null
+
+    private fun estimateCurrentSpeedMs(): Double {
+        if (speedHistory.isEmpty()) return 0.0
+        return speedHistory.average()
+    }
+
+    private fun isLikelyOnTransport(): Boolean = estimateCurrentSpeedMs() > TRANSPORT_SPEED_THRESHOLD_MS
+
     init {
         restoreMapState()
 
@@ -291,6 +316,7 @@ class MapViewModel @Inject constructor(
                 val route = routeRepository.getRouteById(savedRouteId)
                 _activeRoute.value = route
                 if (route != null) {
+                    _totalRouteDistanceMeters.value = route.distance
                     restoreRouteProgress(savedRouteId)
                     fetchWalkingDirectionsForRoute(route)
                 }
@@ -303,6 +329,7 @@ class MapViewModel @Inject constructor(
                 val updated = routes.find { it.id == current.id }
                 if (updated != null && updated != current) {
                     _activeRoute.value = updated
+                    _totalRouteDistanceMeters.value = updated.distance
 
                     val oldWp = buildList {
                         add(current.startPoint); addAll(current.waypoints); add(current.endPoint)
@@ -315,7 +342,10 @@ class MapViewModel @Inject constructor(
                     }
                 } else if (updated == null) {
                     _activeRoute.value = null
+                    _fullWalkingRouteGeometry.value = emptyList()
                     _walkingRouteGeometry.value = emptyList()
+                    _totalRouteDistanceMeters.value = 0.0
+                    _routeProgressFraction.value = 0f
                 }
             }
         }
@@ -333,7 +363,7 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun createRouteToPlace(destination: Place) {
+    fun createRouteToPlace(destination: Place, transportMode: TransportMode = TransportMode.WALKING) {
         if (!_hasUserLocation.value) return
         val user = _userLocation.value
         _isCreatingRoute.value = true
@@ -341,18 +371,20 @@ class MapViewModel @Inject constructor(
             try {
                 val start = RoutePoint(user.latitude, user.longitude, "Моя позиція")
                 val end = RoutePoint(destination.latitude, destination.longitude, destination.name)
-                val distance = NativeGeoEngine.distanceMeters(
+                val straightLine = NativeGeoEngine.distanceMeters(
                     start.latitude, start.longitude, end.latitude, end.longitude
                 )
-                val estimatedMin = max(1, (distance / WALKING_SPEED_METERS_PER_MIN).toInt())
+                val walkingDistance = straightLine * 1.35
+                val estimatedMin = RouteNavigationMetrics.estimateDurationMinutes(walkingDistance, transportMode)
 
                 val route = Route(
                     name = "→ ${destination.name}",
                     startPoint = start,
                     endPoint = end,
                     waypoints = emptyList(),
-                    distance = distance,
-                    estimatedDuration = estimatedMin
+                    distance = walkingDistance,
+                    estimatedDuration = estimatedMin,
+                    transportMode = transportMode
                 )
 
                 val savedId = routeRepository.saveRoute(route)
@@ -381,8 +413,13 @@ class MapViewModel @Inject constructor(
         _activeRoute.value = null
         walkingDirectionsJob?.cancel()
         rerouteJob?.cancel()
+        routeProgressJob?.cancel()
         _isRerouting.value = false
+        _fullWalkingRouteGeometry.value = emptyList()
         _walkingRouteGeometry.value = emptyList()
+        _totalRouteDistanceMeters.value = 0.0
+        _totalRouteDurationSeconds = null
+        speedHistory.clear()
         viewModelScope.launch {
             userPreferenceRepository.deleteByKey("map.activeRouteId")
         }
@@ -391,6 +428,7 @@ class MapViewModel @Inject constructor(
             _currentWaypointIndex.value = 0
             _remainingDistance.value = 0.0
             _remainingMinutes.value = 0
+            _routeProgressFraction.value = 0f
             _distanceToNextWaypoint.value = 0.0
             _nextWaypointName.value = null
             _poiPromptPlace.value = null
@@ -403,8 +441,13 @@ class MapViewModel @Inject constructor(
         _activeRoute.value = null
         walkingDirectionsJob?.cancel()
         rerouteJob?.cancel()
+        routeProgressJob?.cancel()
         _isRerouting.value = false
+        _fullWalkingRouteGeometry.value = emptyList()
         _walkingRouteGeometry.value = emptyList()
+        _totalRouteDistanceMeters.value = 0.0
+        _totalRouteDurationSeconds = null
+        speedHistory.clear()
         viewModelScope.launch {
             userPreferenceRepository.deleteByKey("map.activeRouteId")
         }
@@ -497,12 +540,28 @@ class MapViewModel @Inject constructor(
         if (bearing >= 0f) _userBearing.value = bearing
         lastGpsAccuracy = accuracy
 
+        val now = System.currentTimeMillis()
+        if (!lastLocationLat.isNaN() && lastLocationTimestamp > 0L) {
+            val dt = (now - lastLocationTimestamp) / 1000.0
+            if (dt > 0.1) {
+                val dist = NativeGeoEngine.distanceMeters(lastLocationLat, lastLocationLon, latitude, longitude)
+                val speed = dist / dt
+                if (speed < 50.0) {
+                    speedHistory.addLast(speed)
+                    while (speedHistory.size > SPEED_HISTORY_SIZE) speedHistory.removeFirst()
+                }
+            }
+        }
+        lastLocationLat = latitude
+        lastLocationLon = longitude
+        lastLocationTimestamp = now
+
         if (_activeRoute.value != null) {
             _mapCenter.value = clampCenterToKyiv(MapCenter(latitude, longitude))
             if (_zoomLevel.value < 16) _zoomLevel.value = 16
         }
 
-        updateRouteProgress(latitude, longitude)
+        scheduleRouteProgressUpdate(latitude, longitude)
     }
 
     fun updateUserBearing(bearing: Float) {
@@ -632,7 +691,11 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun createRouteFromPlaces(name: String, selectedPlaces: List<Place>) {
+    fun createRouteFromPlaces(
+        name: String,
+        selectedPlaces: List<Place>,
+        transportMode: TransportMode = TransportMode.WALKING
+    ) {
         if (selectedPlaces.size < 2) return
         val placesWithoutToilets = selectedPlaces
             .distinctBy { it.id }
@@ -652,8 +715,8 @@ class MapViewModel @Inject constructor(
                         places = points,
                         description = "Маршрут, створений на карті"
                     )
-                } ?: return@launch
-                routeRepository.saveRoute(route)
+                }?.copy(transportMode = transportMode) ?: return@launch
+                routeRepository.saveRoute(RouteMetricsCalculator.recompute(route))
             } finally {
                 _isCreatingRoute.value = false
             }
@@ -688,38 +751,82 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    private fun updateRouteProgress(lat: Double, lon: Double) {
-        val route = _activeRoute.value ?: return
-        val allPoints = buildList {
-            add(route.startPoint)
-            addAll(route.waypoints)
-            add(route.endPoint)
+    private fun scheduleRouteProgressUpdate(lat: Double, lon: Double) {
+        if (_activeRoute.value == null) return
+        routeProgressJob?.cancel()
+        routeProgressJob = viewModelScope.launch {
+            val route = _activeRoute.value ?: return@launch
+            val fullGeometry = _fullWalkingRouteGeometry.value
+            val allPoints = buildList {
+                add(route.startPoint)
+                addAll(route.waypoints)
+                add(route.endPoint)
+            }
+            if (allPoints.size < 2) return@launch
+
+            val geometryProjection = if (fullGeometry.size >= 2) {
+                withContext(Dispatchers.Default) {
+                    RouteNavigationMetrics.projectOnPolyline(fullGeometry, lat, lon)
+                }
+            } else null
+
+            val currentIdx = _currentWaypointIndex.value
+            val onTransport = isLikelyOnTransport()
+            val waypointRadius = if (onTransport) TRANSPORT_WAYPOINT_REACH_RADIUS_METERS else WAYPOINT_REACHED_RADIUS_METERS
+            val newIdx = resolveCurrentWaypointIndex(
+                userLat = lat,
+                userLon = lon,
+                allPoints = allPoints,
+                currentIdx = currentIdx,
+                reachRadius = waypointRadius
+            )
+            _currentWaypointIndex.value = newIdx
+
+            recalculateRemainingDistance(lat, lon, allPoints, newIdx, geometryProjection)
+
+            persistRouteProgress(route.id, newIdx)
+
+            checkOffRouteAndReroute(lat, lon, route, allPoints, newIdx, geometryProjection)
+
+            checkPoiProximity(lat, lon, allPoints, newIdx)
         }
-        if (allPoints.size < 2) return
+    }
 
-        val nearestIdx = NativeGeoEngine.nearestPointIndex(allPoints, lat, lon)
-        if (nearestIdx < 0) return
+    private fun resolveCurrentWaypointIndex(
+        userLat: Double,
+        userLon: Double,
+        allPoints: List<RoutePoint>,
+        currentIdx: Int,
+        reachRadius: Double = WAYPOINT_REACHED_RADIUS_METERS
+    ): Int {
+        var resolvedIndex = currentIdx.coerceIn(0, allPoints.lastIndex)
 
-        val distToNearest = NativeGeoEngine.distanceMeters(
-            lat, lon,
-            allPoints[nearestIdx].latitude, allPoints[nearestIdx].longitude
-        )
-
-        val currentIdx = _currentWaypointIndex.value
-        val newIdx = if (distToNearest <= WAYPOINT_REACHED_RADIUS_METERS && nearestIdx >= currentIdx) {
-            nearestIdx
-        } else {
-            currentIdx
+        for (index in (resolvedIndex + 1)..allPoints.lastIndex) {
+            val distance = NativeGeoEngine.distanceMeters(
+                userLat,
+                userLon,
+                allPoints[index].latitude,
+                allPoints[index].longitude
+            )
+            if (distance <= reachRadius) {
+                resolvedIndex = index
+            }
         }
-        _currentWaypointIndex.value = newIdx
 
-        recalculateRemainingDistance(lat, lon, allPoints, newIdx)
+        val nearestIdx = NativeGeoEngine.nearestPointIndex(allPoints, userLat, userLon)
+        if (nearestIdx >= resolvedIndex) {
+            val distToNearest = NativeGeoEngine.distanceMeters(
+                userLat,
+                userLon,
+                allPoints[nearestIdx].latitude,
+                allPoints[nearestIdx].longitude
+            )
+            if (distToNearest <= reachRadius) {
+                resolvedIndex = nearestIdx
+            }
+        }
 
-        persistRouteProgress(route.id, newIdx)
-
-        checkOffRouteAndReroute(lat, lon, route, allPoints, newIdx)
-
-        checkPoiProximity(lat, lon, allPoints, newIdx)
+        return resolvedIndex.coerceAtMost(allPoints.lastIndex)
     }
 
     private fun persistRouteProgress(routeId: Long, waypointIndex: Int) {
@@ -745,6 +852,7 @@ class MapViewModel @Inject constructor(
         _currentWaypointIndex.value = 0
         _remainingDistance.value = 0.0
         _remainingMinutes.value = 0
+        _routeProgressFraction.value = 0f
         _distanceToNextWaypoint.value = 0.0
         _nextWaypointName.value = null
         _poiPromptPlace.value = null
@@ -806,29 +914,60 @@ class MapViewModel @Inject constructor(
         persistRouteProgress(route.id, newIdx)
 
         val userLoc = _userLocation.value
-        recalculateRemainingDistance(userLoc.latitude, userLoc.longitude, allPoints, newIdx)
+        recalculateRemainingDistance(
+            userLoc.latitude,
+            userLoc.longitude,
+            allPoints,
+            newIdx,
+            RouteNavigationMetrics.projectOnPolyline(_fullWalkingRouteGeometry.value, userLoc.latitude, userLoc.longitude)
+        )
     }
 
     private fun recalculateRemainingDistance(
         userLat: Double,
         userLon: Double,
         allPoints: List<RoutePoint>,
-        currentIdx: Int
+        currentIdx: Int,
+        geometryProjection: RouteNavigationMetrics.PolylineProjection?
     ) {
-        if (currentIdx >= allPoints.lastIndex) {
+        val hasProjection = geometryProjection != null && geometryProjection.totalDistanceMeters > 0.0
+        val remainingRouteDistance = if (hasProjection) {
+            val projection = geometryProjection
+            _totalRouteDistanceMeters.value = projection.totalDistanceMeters
+            _walkingRouteGeometry.value = RouteNavigationMetrics.remainingGeometry(
+                _fullWalkingRouteGeometry.value,
+                projection
+            )
+            (projection.totalDistanceMeters - projection.distanceFromStartMeters).coerceAtLeast(0.0)
+        } else {
+            val fallbackGeometry = allPoints.drop(currentIdx.coerceAtMost(allPoints.lastIndex))
+            _walkingRouteGeometry.value = fallbackGeometry
+            if (_totalRouteDistanceMeters.value <= 0.0) {
+                _totalRouteDistanceMeters.value = NativeGeoEngine.polylineDistanceMeters(allPoints)
+            }
+            NativeGeoEngine.polylineDistanceMeters(fallbackGeometry)
+        }
+
+        if (currentIdx >= allPoints.lastIndex || remainingRouteDistance <= 8.0) {
 
             _remainingDistance.value = 0.0
             _remainingMinutes.value = 0
+            _routeProgressFraction.value = 1f
             _distanceToNextWaypoint.value = 0.0
             _nextWaypointName.value = null
+            _walkingRouteGeometry.value = emptyList()
             return
         }
 
-        val routeRemaining = NativeGeoEngine.polylineDistanceMeters(
-            allPoints.subList(currentIdx, allPoints.size)
-        )
-        _remainingDistance.value = routeRemaining
-        _remainingMinutes.value = max(1, (routeRemaining / WALKING_SPEED_METERS_PER_MIN).toInt())
+        _remainingDistance.value = remainingRouteDistance
+        _remainingMinutes.value = estimateRemainingMinutes(remainingRouteDistance)
+
+        val totalDistance = _totalRouteDistanceMeters.value.takeIf { it > 0.0 } ?: remainingRouteDistance
+        _routeProgressFraction.value = if (totalDistance <= 0.0) {
+            0f
+        } else {
+            (1.0 - (remainingRouteDistance / totalDistance)).toFloat().coerceIn(0f, 1f)
+        }
 
         val nextIdx = currentIdx + 1
         val distToNext = NativeGeoEngine.distanceMeters(
@@ -839,14 +978,27 @@ class MapViewModel @Inject constructor(
         _nextWaypointName.value = allPoints[nextIdx].name
     }
 
+    private fun estimateRemainingMinutes(remainingDistanceMeters: Double): Int {
+        val totalDist = _totalRouteDistanceMeters.value
+        val osrmDuration = _totalRouteDurationSeconds
+        if (osrmDuration != null && osrmDuration > 0.0 && totalDist > 0.0) {
+            val fraction = (remainingDistanceMeters / totalDist).coerceIn(0.0, 1.0)
+            val remainingSec = osrmDuration * fraction
+            return kotlin.math.ceil(remainingSec / 60.0).toInt().coerceAtLeast(if (remainingDistanceMeters > 10.0) 1 else 0)
+        }
+        val mode = _activeRoute.value?.transportMode ?: TransportMode.WALKING
+        return RouteNavigationMetrics.estimateDurationMinutes(remainingDistanceMeters, mode)
+    }
+
     private fun checkOffRouteAndReroute(
         userLat: Double,
         userLon: Double,
         route: Route,
         allWaypoints: List<RoutePoint>,
-        currentIdx: Int
+        currentIdx: Int,
+        geometryProjection: RouteNavigationMetrics.PolylineProjection?
     ) {
-        val geometry = _walkingRouteGeometry.value
+        val geometry = _fullWalkingRouteGeometry.value
         if (geometry.size < 2) return
         if (currentIdx >= allWaypoints.lastIndex) return
 
@@ -860,37 +1012,54 @@ class MapViewModel @Inject constructor(
             return
         }
 
-        val nearestGeomIdx = NativeGeoEngine.nearestPointIndex(geometry, userLat, userLon)
-        if (nearestGeomIdx < 0) return
+        val onTransport = isLikelyOnTransport()
 
-        val distToRoute = NativeGeoEngine.distanceMeters(
-            userLat, userLon,
-            geometry[nearestGeomIdx].latitude, geometry[nearestGeomIdx].longitude
-        )
+        val distToRoute = if (geometryProjection != null) {
+            geometryProjection.distanceToRouteMeters
+        } else {
+            val nearestIdx = NativeGeoEngine.nearestPointIndex(geometry, userLat, userLon)
+            val nearestPt = geometry[nearestIdx]
+            NativeGeoEngine.distanceMeters(userLat, userLon, nearestPt.latitude, nearestPt.longitude)
+        }
 
-        if (distToRoute <= OFF_ROUTE_THRESHOLD_METERS) {
+        val offRouteThreshold = if (onTransport) OFF_ROUTE_THRESHOLD_METERS * 0.8 else OFF_ROUTE_THRESHOLD_METERS
+
+        if (distToRoute <= offRouteThreshold) {
             consecutiveOffRouteCount = 0
             return
         }
 
         consecutiveOffRouteCount++
-        if (consecutiveOffRouteCount < OFF_ROUTE_CONSECUTIVE_THRESHOLD) return
+        val requiredConsecutive = if (onTransport) 1 else OFF_ROUTE_CONSECUTIVE_THRESHOLD
+        if (consecutiveOffRouteCount < requiredConsecutive) return
 
         val now = System.currentTimeMillis()
-        if (now - lastRerouteTimestamp < REROUTE_COOLDOWN_MS) return
+        val cooldown = if (onTransport) TRANSPORT_REROUTE_COOLDOWN_MS else REROUTE_COOLDOWN_MS
+        if (now - lastRerouteTimestamp < cooldown) return
         lastRerouteTimestamp = now
         consecutiveOffRouteCount = 0
 
-        Log.d("WalkingDirections", "User is ${distToRoute.toInt()}m off-route (confirmed), rerouting...")
+        Log.d("WalkingDirections", "User is ${distToRoute.toInt()}m off-route (transport=$onTransport, speed=${"%.1f".format(estimateCurrentSpeedMs())} m/s), rerouting...")
 
-        val remainingWaypoints = allWaypoints.subList(
-            (currentIdx + 1).coerceAtMost(allWaypoints.lastIndex),
-            allWaypoints.size
+        val remainingWaypoints = buildRemainingWaypoints(
+            allWaypoints = allWaypoints,
+            currentIdx = currentIdx,
+            userLat = userLat,
+            userLon = userLon,
+            geometry = geometry,
+            geometryProjection = geometryProjection
         )
+
+        val rerouteTargets = if (remainingWaypoints.isNotEmpty()) {
+            remainingWaypoints
+        } else {
+            listOf(allWaypoints.last())
+        }
+
         val userPoint = RoutePoint(latitude = userLat, longitude = userLon, name = null)
         val newWaypoints = buildList {
             add(userPoint)
-            addAll(remainingWaypoints)
+            addAll(rerouteTargets)
         }
 
         walkingDirectionsJob?.cancel()
@@ -899,19 +1068,57 @@ class MapViewModel @Inject constructor(
         val previousGeometry = _walkingRouteGeometry.value
         rerouteJob = viewModelScope.launch {
             try {
-                val detailed = walkingDirectionsService.fetchWalkingRoute(newWaypoints)
+                val detailed = walkingDirectionsService.fetchWalkingRouteDetails(newWaypoints, route.transportMode)
 
-                if (_activeRoute.value?.id == route.id && detailed.size > newWaypoints.size) {
-                    _walkingRouteGeometry.value = detailed
-                    Log.d("WalkingDirections", "Rerouted: ${detailed.size} geometry points")
+                if (_activeRoute.value?.id == route.id && detailed.geometry.size >= 2) {
+                    applyRouteGeometryResult(
+                        route = route,
+                        requestedWaypoints = newWaypoints,
+                        result = detailed,
+                        persistRouteMetrics = false
+                    )
+                    Log.d("WalkingDirections", "Rerouted: ${detailed.geometry.size} geometry points")
                 } else if (_activeRoute.value?.id == route.id) {
-
-                    Log.w("WalkingDirections", "Reroute returned straight-line fallback (${detailed.size} pts), keeping old geometry")
+                    Log.w("WalkingDirections", "Reroute returned empty geometry, keeping old geometry")
+                    _walkingRouteGeometry.value = previousGeometry
                 }
             } catch (e: Exception) {
                 Log.w("WalkingDirections", "Reroute failed, keeping old geometry", e)
+                _walkingRouteGeometry.value = previousGeometry
             } finally {
                 _isRerouting.value = false
+            }
+        }
+    }
+
+    private fun buildRemainingWaypoints(
+        allWaypoints: List<RoutePoint>,
+        currentIdx: Int,
+        userLat: Double,
+        userLon: Double,
+        geometry: List<RoutePoint>,
+        geometryProjection: RouteNavigationMetrics.PolylineProjection?
+    ): List<RoutePoint> {
+        val candidateWaypoints = allWaypoints
+            .subList((currentIdx + 1).coerceAtMost(allWaypoints.lastIndex), allWaypoints.size)
+
+        if (candidateWaypoints.isEmpty()) return emptyList()
+
+        val userProjectionSegment = geometryProjection?.segmentIndex ?: -1
+
+        return candidateWaypoints.filter { waypoint ->
+            val distFromUser = NativeGeoEngine.distanceMeters(
+                userLat, userLon, waypoint.latitude, waypoint.longitude
+            )
+            if (distFromUser < 50.0) return@filter false
+
+            if (userProjectionSegment >= 0 && geometry.size >= 2) {
+                val waypointGeomIdx = NativeGeoEngine.nearestPointIndex(
+                    geometry, waypoint.latitude, waypoint.longitude
+                )
+                waypointGeomIdx > userProjectionSegment
+            } else {
+                true
             }
         }
     }
@@ -957,19 +1164,106 @@ class MapViewModel @Inject constructor(
 
         Log.d("WalkingDirections", "fetchWalkingDirectionsForRoute: route=${route.id}, ${waypoints.size} effective waypoints (currentIdx=$currentIdx)")
 
+        _fullWalkingRouteGeometry.value = waypoints
         _walkingRouteGeometry.value = waypoints
+        _totalRouteDistanceMeters.value = route.distance.takeIf { it > 0.0 }
+            ?: NativeGeoEngine.polylineDistanceMeters(waypoints)
 
         walkingDirectionsJob = viewModelScope.launch {
-            val detailed = walkingDirectionsService.fetchWalkingRoute(waypoints)
-            Log.d("WalkingDirections", "Got ${detailed.size} detailed points (was ${waypoints.size} waypoints), routeMatch=${_activeRoute.value?.id == route.id}")
+            val detailed = walkingDirectionsService.fetchWalkingRouteDetails(waypoints, route.transportMode)
+            Log.d("WalkingDirections", "Got ${detailed.geometry.size} detailed points (was ${waypoints.size} waypoints), routeMatch=${_activeRoute.value?.id == route.id}")
 
-            if (_activeRoute.value?.id == route.id && detailed.size > waypoints.size) {
-                _walkingRouteGeometry.value = detailed
-                Log.d("WalkingDirections", "Updated _walkingRouteGeometry with ${detailed.size} points")
-            } else if (_activeRoute.value?.id == route.id && detailed.size <= waypoints.size) {
-                Log.w("WalkingDirections", "OSRM returned fallback (${detailed.size} pts for ${waypoints.size} waypoints), keeping straight-line")
+            if (_activeRoute.value?.id == route.id && detailed.geometry.size >= 2) {
+                applyRouteGeometryResult(
+                    route = route,
+                    requestedWaypoints = waypoints,
+                    result = detailed,
+                    persistRouteMetrics = shouldPersistRouteMetrics(route, waypoints)
+                )
+                Log.d("WalkingDirections", "Updated route geometry with ${detailed.geometry.size} points")
+            } else if (_activeRoute.value?.id == route.id) {
+                Log.w("WalkingDirections", "OSRM returned fallback (${detailed.geometry.size} pts for ${waypoints.size} waypoints), keeping straight-line")
             }
         }
+    }
+
+    private fun shouldPersistRouteMetrics(route: Route, requestedWaypoints: List<RoutePoint>): Boolean {
+        if (requestedWaypoints.size < 2) return false
+        return sameCoordinate(requestedWaypoints.first(), route.startPoint) &&
+            sameCoordinate(requestedWaypoints.last(), route.endPoint) &&
+            requestedWaypoints.size == route.waypoints.size + 2
+    }
+
+    private suspend fun applyRouteGeometryResult(
+        route: Route,
+        requestedWaypoints: List<RoutePoint>,
+        result: WalkingDirectionsService.WalkingRouteResult,
+        persistRouteMetrics: Boolean
+    ) {
+        val resolvedGeometry = if (result.geometry.size >= 2) result.geometry else requestedWaypoints
+        _fullWalkingRouteGeometry.value = resolvedGeometry
+        _walkingRouteGeometry.value = resolvedGeometry
+
+        val resolvedDistance = result.distanceMeters
+            ?.takeIf { it > 0.0 }
+            ?: NativeGeoEngine.polylineDistanceMeters(resolvedGeometry)
+        _totalRouteDistanceMeters.value = resolvedDistance
+
+        _totalRouteDurationSeconds = result.durationSeconds?.takeIf { it > 0.0 }
+
+        val resolvedDurationMinutes = result.durationSeconds
+            ?.let { seconds -> kotlin.math.ceil(seconds / 60.0).toInt() }
+            ?.coerceAtLeast(1)
+            ?: RouteNavigationMetrics.estimateDurationMinutes(resolvedDistance, route.transportMode)
+
+        if (persistRouteMetrics) {
+            maybePersistRouteMetrics(route, resolvedDistance, resolvedDurationMinutes)
+        }
+
+        if (_hasUserLocation.value) {
+            val user = _userLocation.value
+            val allPoints = buildList {
+                add(route.startPoint)
+                addAll(route.waypoints)
+                add(route.endPoint)
+            }
+            val projection = RouteNavigationMetrics.projectOnPolyline(
+                resolvedGeometry,
+                user.latitude,
+                user.longitude
+            )
+            recalculateRemainingDistance(
+                user.latitude,
+                user.longitude,
+                allPoints,
+                _currentWaypointIndex.value,
+                projection
+            )
+        }
+    }
+
+    private suspend fun maybePersistRouteMetrics(
+        route: Route,
+        distanceMeters: Double,
+        durationMinutes: Int
+    ) {
+        val currentRoute = _activeRoute.value?.takeIf { it.id == route.id } ?: route
+        val distanceChanged = abs(currentRoute.distance - distanceMeters) >= 25.0
+        val durationChanged = currentRoute.estimatedDuration != durationMinutes
+        if (!distanceChanged && !durationChanged) return
+
+        val updatedRoute = currentRoute.copy(
+            distance = distanceMeters,
+            estimatedDuration = durationMinutes,
+            updatedAt = System.currentTimeMillis()
+        )
+        _activeRoute.value = updatedRoute
+        routeRepository.updateRoute(updatedRoute)
+    }
+
+    private fun sameCoordinate(first: RoutePoint, second: RoutePoint, tolerance: Double = 0.00005): Boolean {
+        return abs(first.latitude - second.latitude) <= tolerance &&
+            abs(first.longitude - second.longitude) <= tolerance
     }
 
     private fun computeViewportBounds(center: MapCenter, zoom: Int): MapViewportBounds {

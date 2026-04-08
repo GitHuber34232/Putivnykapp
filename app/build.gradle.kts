@@ -194,6 +194,10 @@ android {
         }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/versions/**"
         }
     }
 
@@ -237,6 +241,14 @@ dependencies {
     implementation("org.mapsforge:mapsforge-map-android:0.19.0")
     implementation("org.mapsforge:mapsforge-map-reader:0.19.0")
     implementation("org.mapsforge:mapsforge-themes:0.19.0")
+    implementation("com.graphhopper:graphhopper-core:10.0") {
+        exclude(group = "com.fasterxml.jackson.core")
+        exclude(group = "com.fasterxml.jackson.dataformat")
+        exclude(group = "org.openstreetmap.osmosis")
+        exclude(group = "org.apache.xmlgraphics")
+        exclude(group = "ch.qos.logback")
+    }
+    implementation("org.slf4j:slf4j-android:1.7.36")
     implementation("org.maplibre.gl:android-sdk:12.3.1")
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.google.mlkit:translate:17.0.3")

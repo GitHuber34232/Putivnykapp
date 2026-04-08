@@ -24,7 +24,7 @@ class RouteMetricsCalculatorTest {
     fun recompute_sets_distance_and_min_duration() {
         val updated = RouteMetricsCalculator.recompute(baseRoute())
         assertTrue(updated.distance > 0.0)
-        assertTrue(updated.estimatedDuration >= 5)
+        assertTrue(updated.estimatedDuration >= 1)
         assertTrue(updated.updatedAt >= 100L)
     }
 

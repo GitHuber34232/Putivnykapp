@@ -20,11 +20,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.Route
 import ua.kyiv.putivnyk.data.model.RoutePoint
+import ua.kyiv.putivnyk.data.model.TransportMode
 import ua.kyiv.putivnyk.ui.i18n.tr
 import ua.kyiv.putivnyk.ui.i18n.trDynamic
 import ua.kyiv.putivnyk.ui.components.EmptyStateView
 import ua.kyiv.putivnyk.ui.components.LoadingStateView
 import ua.kyiv.putivnyk.ui.maps.MapLibreMapView
+import ua.kyiv.putivnyk.ui.utils.RouteUiFormatter
 import ua.kyiv.putivnyk.ui.viewmodel.MapCenter
 import ua.kyiv.putivnyk.ui.viewmodel.RoutesViewModel
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -70,8 +72,8 @@ fun RoutesScreen(
             availablePlaces = availablePlaces,
             isCreating = isCreatingRoute,
             onDismiss = { showCreateRouteDialog = false },
-            onCreate = { name, places ->
-                viewModel.createRouteFromPlaces(name, places)
+            onCreate = { name, places, transportMode ->
+                viewModel.createRouteFromPlaces(name, places, transportMode)
                 showCreateRouteDialog = false
             }
         )
@@ -219,8 +221,11 @@ fun RoutesScreen(
                         singleLine = true
                     )
                     Text(route.description ?: tr("routes.no_description", "Без опису"))
-                    Text("${tr("routes.distance", "Відстань")}: ${String.format("%.1f", route.distance / 1000)} ${tr("routes.km", "км")}")
-                    Text("${tr("routes.duration", "Тривалість")}: ${route.estimatedDuration} ${tr("routes.min", "хв")}")
+                    Text("${tr("routes.distance", "Відстань")}: ${RouteUiFormatter.formatDistance(route.distance)}")
+                    Text("${tr("routes.duration", "Тривалість")}: ${RouteUiFormatter.formatDuration(route.estimatedDuration)}")
+                    Text("${tr("routes.transport_mode", "Транспорт")}: ${
+                        if (route.transportMode == TransportMode.DRIVING) trDynamic("Автомобіль") else trDynamic("Пішки")
+                    }")
                     Text("${tr("routes.points", "Точок")}: ${route.waypoints.size + 2}")
                     if (route.waypoints.isNotEmpty()) {
                         Text(tr("routes.waypoints", "Проміжні точки:"))
@@ -352,7 +357,7 @@ private fun RouteBuilderMapOverlay(
     availablePlaces: List<Place>,
     isCreating: Boolean,
     onDismiss: () -> Unit,
-    onCreate: (String, List<Place>) -> Unit
+    onCreate: (String, List<Place>, TransportMode) -> Unit
 ) {
     val selectedPlaces = remember { mutableStateListOf<Place>() }
     var mapCenter by remember { mutableStateOf(MapCenter(50.4501, 30.5234)) }
@@ -511,21 +516,40 @@ private fun RouteBuilderMapOverlay(
 
     if (showNameDialog) {
         var routeName by remember { mutableStateOf("") }
+        var selectedTransportMode by remember { mutableStateOf(TransportMode.WALKING) }
         AlertDialog(
             onDismissRequest = { showNameDialog = false },
             title = { Text(tr("routes.new_route", "Новий маршрут")) },
             text = {
-                OutlinedTextField(
-                    value = routeName,
-                    onValueChange = { routeName = it },
-                    label = { Text(tr("map.route_name", "Назва маршруту")) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = routeName,
+                        onValueChange = { routeName = it },
+                        label = { Text(tr("map.route_name", "Назва маршруту")) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = tr("routes.transport_mode", "Транспорт"),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = selectedTransportMode == TransportMode.WALKING,
+                            onClick = { selectedTransportMode = TransportMode.WALKING },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                        ) { Text(trDynamic("Пішки")) }
+                        SegmentedButton(
+                            selected = selectedTransportMode == TransportMode.DRIVING,
+                            onClick = { selectedTransportMode = TransportMode.DRIVING },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                        ) { Text(trDynamic("Автомобіль")) }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    onCreate(routeName, selectedPlaces.toList())
+                    onCreate(routeName, selectedPlaces.toList(), selectedTransportMode)
                     showNameDialog = false
                 }) {
                     Text(tr("routes.create", "Створити"))
@@ -606,14 +630,17 @@ fun RouteCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.DirectionsWalk,
+                        imageVector = if (route.transportMode == TransportMode.DRIVING)
+                            Icons.Filled.DirectionsCar
+                        else
+                            Icons.AutoMirrored.Filled.DirectionsWalk,
                         contentDescription = tr("routes.distance", "Відстань"),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = String.format("%.1f %s", route.distance / 1000, tr("routes.km", "км")),
+                        text = RouteUiFormatter.formatDistance(route.distance),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -626,7 +653,7 @@ fun RouteCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${route.estimatedDuration} ${tr("routes.min", "хв")}",
+                        text = RouteUiFormatter.formatDuration(route.estimatedDuration),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

@@ -56,6 +56,7 @@ import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.PlaceCategory
 import ua.kyiv.putivnyk.data.model.PlaceSortMode
 import ua.kyiv.putivnyk.data.model.Route
+import ua.kyiv.putivnyk.data.model.TransportMode
 import ua.kyiv.putivnyk.ui.i18n.trCategory
 import ua.kyiv.putivnyk.ui.i18n.trDynamic
 import ua.kyiv.putivnyk.ui.i18n.trRiverBank
@@ -63,6 +64,7 @@ import ua.kyiv.putivnyk.ui.i18n.trSortMode
 import ua.kyiv.putivnyk.ui.i18n.tr
 import ua.kyiv.putivnyk.ui.maps.MapLibreMapView
 import ua.kyiv.putivnyk.ui.maps.OfflineMapView
+import ua.kyiv.putivnyk.ui.utils.RouteUiFormatter
 import ua.kyiv.putivnyk.ui.viewmodel.MapViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,6 +93,7 @@ fun MapScreen(
     val currentWaypointIndex by viewModel.currentWaypointIndex.collectAsState()
     val remainingDistance by viewModel.remainingDistance.collectAsState()
     val remainingMinutes by viewModel.remainingMinutes.collectAsState()
+    val routeProgressFraction by viewModel.routeProgressFraction.collectAsState()
     val distanceToNextWaypoint by viewModel.distanceToNextWaypoint.collectAsState()
     val nextWaypointName by viewModel.nextWaypointName.collectAsState()
     val poiPromptPlace by viewModel.poiPromptPlace.collectAsState()
@@ -262,6 +265,7 @@ fun MapScreen(
                     userLocation = userLocation,
                     userBearing = userBearing,
                     showUserLocation = hasUserLocation,
+                    isNavigating = activeRoute != null,
                     onMapMoved = { newCenter, newZoom ->
                         viewModel.updateMapCenter(newCenter.latitude, newCenter.longitude)
                         viewModel.updateZoomLevel(newZoom)
@@ -415,10 +419,9 @@ fun MapScreen(
 
                             if (hasUserLocation && remainingDistance > 0) {
                                 val totalPoints = (activeRoute!!.waypoints.size + 2)
-                                val progressFraction = currentWaypointIndex.toFloat() / (totalPoints - 1).coerceAtLeast(1).toFloat()
 
                                 LinearProgressIndicator(
-                                    progress = { progressFraction },
+                                    progress = { routeProgressFraction },
                                     modifier = Modifier.fillMaxWidth().padding(end = 8.dp, bottom = 4.dp),
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
@@ -435,30 +438,22 @@ fun MapScreen(
                                         color = MaterialTheme.colorScheme.primary
                                     )
 
-                                    val distText = if (remainingDistance >= 1000) {
-                                        val rounded = (remainingDistance / 100).toInt() * 100.0
-                                        String.format("%.1f ${tr("routes.km", "км")}", rounded / 1000)
-                                    } else {
-                                        val rounded = (remainingDistance / 100).toInt() * 100
-                                        "$rounded ${tr("routes.m", "м")}"
-                                    }
                                     Text(
-                                        text = distText,
+                                        text = RouteUiFormatter.formatDistance(remainingDistance),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Text(
+                                        text = RouteUiFormatter.formatDuration(remainingMinutes),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
                                 nextWaypointName?.let { name ->
-                                    val nextDistText = if (distanceToNextWaypoint >= 1000) {
-                                        val rounded = (distanceToNextWaypoint / 100).toInt() * 100.0
-                                        String.format("%.1f ${tr("routes.km", "км")}", rounded / 1000)
-                                    } else {
-                                        val rounded = (distanceToNextWaypoint / 100).toInt() * 100
-                                        "$rounded ${tr("routes.m", "м")}"
-                                    }
                                     Text(
-                                        text = "→ ${trDynamic(name)} ($nextDistText)",
+                                        text = "→ ${trDynamic(name)} (${RouteUiFormatter.formatDistance(distanceToNextWaypoint)})",
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -754,20 +749,39 @@ fun MapScreen(
     }
 
     if (showRouteNameDialog) {
+        var selectedTransportMode by remember { mutableStateOf(TransportMode.WALKING) }
         AlertDialog(
             onDismissRequest = { showRouteNameDialog = false },
             title = { Text(tr("map.route_name", "Назва маршруту")) },
             text = {
-                OutlinedTextField(
-                    value = routeName,
-                    onValueChange = { routeName = it },
-                    singleLine = true,
-                    placeholder = { Text(tr("map.route_name_hint", "Наприклад: Вечірній центр")) }
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = routeName,
+                        onValueChange = { routeName = it },
+                        singleLine = true,
+                        placeholder = { Text(tr("map.route_name_hint", "Наприклад: Вечірній центр")) }
+                    )
+                    Text(
+                        text = tr("routes.transport_mode", "Транспорт"),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = selectedTransportMode == TransportMode.WALKING,
+                            onClick = { selectedTransportMode = TransportMode.WALKING },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                        ) { Text(trDynamic("Пішки")) }
+                        SegmentedButton(
+                            selected = selectedTransportMode == TransportMode.DRIVING,
+                            onClick = { selectedTransportMode = TransportMode.DRIVING },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                        ) { Text(trDynamic("Автомобіль")) }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.createRouteFromPlaces(routeName, selectedRoutePoints.toList())
+                    viewModel.createRouteFromPlaces(routeName, selectedRoutePoints.toList(), selectedTransportMode)
                     selectedRoutePoints.clear()
                     showRouteNameDialog = false
                     routeBuilderMode = false

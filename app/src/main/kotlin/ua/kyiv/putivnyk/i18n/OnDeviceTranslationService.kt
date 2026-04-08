@@ -1,7 +1,9 @@
 package ua.kyiv.putivnyk.i18n
 
 import com.google.mlkit.common.model.DownloadConditions
+import com.google.mlkit.common.model.RemoteModelManager
 import com.google.mlkit.nl.translate.TranslateLanguage
+import com.google.mlkit.nl.translate.TranslateRemoteModel
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
@@ -17,6 +19,7 @@ import kotlin.coroutines.resumeWithException
 class OnDeviceTranslationService @Inject constructor() {
 
     private val translators = ConcurrentHashMap<String, Translator>()
+    private val remoteModelManager = RemoteModelManager.getInstance()
 
     suspend fun translateText(
         text: String,
@@ -75,6 +78,20 @@ class OnDeviceTranslationService @Inject constructor() {
         }
     }
 
+    suspend fun deleteAllDownloadedModels(): Int {
+        val downloaded = remoteModelManager.getDownloadedModelsAwait()
+        if (downloaded.isEmpty()) return 0
+
+        var deletedCount = 0
+        downloaded.forEach { model ->
+            runCatching {
+                remoteModelManager.deleteDownloadedModelAwait(model)
+                deletedCount++
+            }
+        }
+        return deletedCount
+    }
+
     companion object {
         const val MODEL_DOWNLOAD_TIMEOUT_MS = 90_000L
     }
@@ -116,5 +133,19 @@ class OnDeviceTranslationService @Inject constructor() {
             translate(text)
                 .addOnSuccessListener { continuation.resume(it) }
                 .addOnFailureListener { continuation.resumeWithException(it) }
+        }
+
+    private suspend fun RemoteModelManager.getDownloadedModelsAwait(): Set<TranslateRemoteModel> =
+        suspendCancellableCoroutine { continuation ->
+            getDownloadedModels(TranslateRemoteModel::class.java)
+                .addOnSuccessListener { if (continuation.isActive) continuation.resume(it) }
+                .addOnFailureListener { if (continuation.isActive) continuation.resumeWithException(it) }
+        }
+
+    private suspend fun RemoteModelManager.deleteDownloadedModelAwait(model: TranslateRemoteModel) =
+        suspendCancellableCoroutine<Unit> { continuation ->
+            deleteDownloadedModel(model)
+                .addOnSuccessListener { if (continuation.isActive) continuation.resume(Unit) }
+                .addOnFailureListener { if (continuation.isActive) continuation.resumeWithException(it) }
         }
 }

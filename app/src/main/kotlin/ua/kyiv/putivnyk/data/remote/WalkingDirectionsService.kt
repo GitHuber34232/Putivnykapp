@@ -8,7 +8,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import ua.kyiv.putivnyk.data.local.OfflineRoutingService
 import ua.kyiv.putivnyk.data.model.RoutePoint
+import ua.kyiv.putivnyk.data.model.TransportMode
 import ua.kyiv.putivnyk.di.OsrmClient
 import kotlin.math.PI
 import kotlin.math.asin
@@ -22,11 +24,18 @@ import javax.inject.Singleton
 class WalkingDirectionsService @Inject constructor(
     @param:OsrmClient private val client: OkHttpClient,
     private val gson: Gson,
+    private val offlineRoutingService: OfflineRoutingService,
 ) {
+
+    data class WalkingRouteResult(
+        val geometry: List<RoutePoint>,
+        val distanceMeters: Double? = null,
+        val durationSeconds: Double? = null,
+    )
 
     companion object {
         private const val TAG = "WalkingDirections"
-        private const val OSRM_BASE = "https://router.project-osrm.org/route/v1/foot"
+        private const val OSRM_BASE = "https://router.project-osrm.org/route/v1"
         private const val MAX_WAYPOINTS_PER_REQUEST = 25
         private const val BACKTRACK_TOLERANCE_METERS = 25.0
         private const val MIN_MIRROR_LENGTH = 3
@@ -34,39 +43,71 @@ class WalkingDirectionsService @Inject constructor(
         private const val INITIAL_BACKOFF_MS = 1000L
     }
 
-    suspend fun fetchWalkingRoute(waypoints: List<RoutePoint>): List<RoutePoint> {
-        Log.d(TAG, "fetchWalkingRoute called with ${waypoints.size} waypoints")
-        if (waypoints.size < 2) return waypoints
+    suspend fun fetchWalkingRoute(
+        waypoints: List<RoutePoint>,
+        transportMode: TransportMode = TransportMode.WALKING
+    ): List<RoutePoint> {
+        return fetchWalkingRouteDetails(waypoints, transportMode).geometry
+    }
+
+    suspend fun fetchWalkingRouteDetails(
+        waypoints: List<RoutePoint>,
+        transportMode: TransportMode = TransportMode.WALKING
+    ): WalkingRouteResult {
+        val profile = when (transportMode) {
+            TransportMode.WALKING -> "foot"
+            TransportMode.DRIVING -> "driving"
+        }
+        Log.d(TAG, "fetchWalkingRoute called with ${waypoints.size} waypoints, profile=$profile")
+        if (waypoints.size < 2) return WalkingRouteResult(geometry = waypoints)
 
         return withContext(Dispatchers.IO) {
             try {
 
                 if (waypoints.size > MAX_WAYPOINTS_PER_REQUEST) {
-                    return@withContext fetchInBatches(waypoints)
+                    return@withContext fetchInBatches(waypoints, profile)
                 }
-                val raw = fetchSingleRoute(waypoints)
+                val raw = fetchSingleRoute(waypoints, profile)
                 if (raw != null) {
-                    Log.d(TAG, "OSRM returned ${raw.size} points (was ${waypoints.size} waypoints)")
-                    val collapsed = collapseBacktracks(raw)
-                    if (collapsed.size < raw.size) {
-                        Log.d(TAG, "Collapsed backtracks: ${raw.size} → ${collapsed.size} points")
+                    Log.d(TAG, "OSRM returned ${raw.geometry.size} points (was ${waypoints.size} waypoints)")
+                    val collapsed = collapseBacktracks(raw.geometry)
+                    if (collapsed.size < raw.geometry.size) {
+                        Log.d(TAG, "Collapsed backtracks: ${raw.geometry.size} → ${collapsed.size} points")
                     }
-                    collapsed
+                    raw.copy(geometry = collapsed)
                 } else {
-                    Log.w(TAG, "fetchSingleRoute returned null, falling back to straight lines")
-                    waypoints
+                    Log.w(TAG, "OSRM returned null, trying offline GraphHopper")
+                    offlineRoutingService.route(waypoints)
+                        ?: straightLineFallback(waypoints)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Walking directions failed, using straight lines", e)
-                waypoints
+                Log.w(TAG, "OSRM failed (${e.message}), trying offline GraphHopper")
+                try {
+                    offlineRoutingService.route(waypoints)
+                        ?: straightLineFallback(waypoints)
+                } catch (offlineError: Exception) {
+                    Log.e(TAG, "Offline routing also failed", offlineError)
+                    straightLineFallback(waypoints)
+                }
             }
         }
     }
 
-    private suspend fun fetchSingleRoute(waypoints: List<RoutePoint>): List<RoutePoint>? {
+    private fun straightLineFallback(waypoints: List<RoutePoint>): WalkingRouteResult {
+        Log.w(TAG, "Using straight-line fallback for ${waypoints.size} waypoints")
+        return WalkingRouteResult(
+            geometry = waypoints,
+            distanceMeters = NativeGeoDistance.estimatePolylineDistance(waypoints)
+        )
+    }
+
+    private suspend fun fetchSingleRoute(
+        waypoints: List<RoutePoint>,
+        profile: String = "foot"
+    ): WalkingRouteResult? {
 
         val coords = waypoints.joinToString(";") { "${it.longitude},${it.latitude}" }
-        val url = "$OSRM_BASE/$coords?overview=full&geometries=geojson"
+        val url = "$OSRM_BASE/$profile/$coords?overview=full&geometries=geojson"
         Log.d(TAG, "Requesting OSRM: $url")
 
         var lastException: Exception? = null
@@ -89,7 +130,7 @@ class WalkingDirectionsService @Inject constructor(
         return null
     }
 
-    private fun executeOsrmRequest(url: String): List<RoutePoint>? {
+    private fun executeOsrmRequest(url: String): WalkingRouteResult? {
         val request = Request.Builder()
             .url(url)
             .header("User-Agent", "Putivnyk/1.0")
@@ -115,7 +156,7 @@ class WalkingDirectionsService @Inject constructor(
         return parseOsrmResponse(body)
     }
 
-    private fun parseOsrmResponse(json: String): List<RoutePoint>? {
+    private fun parseOsrmResponse(json: String): WalkingRouteResult? {
         return try {
             val root = gson.fromJson(json, JsonObject::class.java)
             val code = root.get("code")?.asString
@@ -129,7 +170,8 @@ class WalkingDirectionsService @Inject constructor(
                 return null
             }
 
-            val geometry = routes[0].asJsonObject
+            val routeObject = routes[0].asJsonObject
+            val geometry = routeObject
                 .getAsJsonObject("geometry")
             val coordinates = geometry.getAsJsonArray("coordinates")
             Log.d(TAG, "OSRM geometry has ${coordinates.size()} coordinate pairs")
@@ -141,32 +183,45 @@ class WalkingDirectionsService @Inject constructor(
                 val lat = arr[1].asDouble
                 points.add(RoutePoint(latitude = lat, longitude = lon))
             }
+            val distanceMeters = routeObject.get("distance")?.asDouble
+            val durationSeconds = routeObject.get("duration")?.asDouble
 
             Log.d(TAG, "Parsed ${points.size} route points from OSRM")
-            if (points.size < 2) null else points
+            if (points.size < 2) null else WalkingRouteResult(
+                geometry = points,
+                distanceMeters = distanceMeters,
+                durationSeconds = durationSeconds
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse OSRM response: ${json.take(300)}", e)
             null
         }
     }
 
-    private suspend fun fetchInBatches(waypoints: List<RoutePoint>): List<RoutePoint> {
+    private suspend fun fetchInBatches(
+        waypoints: List<RoutePoint>,
+        profile: String = "foot"
+    ): WalkingRouteResult {
         val batchSize = MAX_WAYPOINTS_PER_REQUEST
         val result = mutableListOf<RoutePoint>()
+        var totalDistance = 0.0
+        var totalDuration = 0.0
 
         var start = 0
         while (start < waypoints.size - 1) {
             val end = (start + batchSize).coerceAtMost(waypoints.size)
             val batch = waypoints.subList(start, end)
-            val batchResult = fetchSingleRoute(batch)
+            val batchResult = fetchSingleRoute(batch, profile)
 
-            if (batchResult != null && batchResult.isNotEmpty()) {
+            if (batchResult != null && batchResult.geometry.isNotEmpty()) {
 
                 if (result.isNotEmpty()) {
-                    result.addAll(batchResult.drop(1))
+                    result.addAll(batchResult.geometry.drop(1))
                 } else {
-                    result.addAll(batchResult)
+                    result.addAll(batchResult.geometry)
                 }
+                totalDistance += batchResult.distanceMeters ?: NativeGeoDistance.estimatePolylineDistance(batchResult.geometry)
+                totalDuration += batchResult.durationSeconds ?: 0.0
             } else {
 
                 if (result.isNotEmpty()) {
@@ -174,12 +229,17 @@ class WalkingDirectionsService @Inject constructor(
                 } else {
                     result.addAll(batch)
                 }
+                totalDistance += NativeGeoDistance.estimatePolylineDistance(batch)
             }
 
             start = end - 1
         }
 
-        return collapseBacktracks(result)
+        return WalkingRouteResult(
+            geometry = collapseBacktracks(result),
+            distanceMeters = totalDistance.takeIf { it > 0.0 },
+            durationSeconds = totalDuration.takeIf { it > 0.0 }
+        )
     }
 
     internal fun collapseBacktracks(points: List<RoutePoint>): List<RoutePoint> {
@@ -253,5 +313,36 @@ class WalkingDirectionsService @Inject constructor(
                 cos(lat1 * PI / 180.0) * cos(lat2 * PI / 180.0) *
                 sin(dLon / 2) * sin(dLon / 2)
         return 2.0 * r * asin(sqrt(a))
+    }
+
+    private object NativeGeoDistance {
+        fun estimatePolylineDistance(points: List<RoutePoint>): Double {
+            if (points.size < 2) return 0.0
+            return points.zipWithNext().sumOf { (from, to) ->
+                val dLat = from.latitude - to.latitude
+                val dLon = from.longitude - to.longitude
+                if (dLat == 0.0 && dLon == 0.0) 0.0 else haversine(
+                    from.latitude,
+                    from.longitude,
+                    to.latitude,
+                    to.longitude
+                )
+            }
+        }
+
+        private fun haversine(
+            lat1: Double,
+            lon1: Double,
+            lat2: Double,
+            lon2: Double
+        ): Double {
+            val r = 6_371_000.0
+            val dLat = (lat2 - lat1) * (PI / 180.0)
+            val dLon = (lon2 - lon1) * (PI / 180.0)
+            val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(lat1 * PI / 180.0) * cos(lat2 * PI / 180.0) *
+                sin(dLon / 2) * sin(dLon / 2)
+            return 2.0 * r * asin(sqrt(a))
+        }
     }
 }

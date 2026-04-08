@@ -50,3 +50,11 @@
 -dontwarn com.google.android.material.R$styleable
 -dontwarn org.maplibre.android.R$color
 -dontwarn org.maplibre.android.R$drawable
+
+# GraphHopper — excluded Jackson & javax dependencies referenced internally
+-dontwarn com.fasterxml.jackson.**
+-dontwarn com.bedatadriven.jackson.**
+-dontwarn javax.lang.model.**
+-dontwarn org.openstreetmap.osmosis.**
+-dontwarn org.apache.xmlgraphics.**
+-dontwarn ch.qos.logback.**

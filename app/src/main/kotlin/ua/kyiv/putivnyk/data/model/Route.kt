@@ -11,6 +11,7 @@ data class Route(
     val waypoints: List<RoutePoint> = emptyList(),
     val distance: Double,
     val estimatedDuration: Int,
+    val transportMode: TransportMode = TransportMode.WALKING,
     val isFavorite: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
@@ -40,6 +41,7 @@ fun Route.toEntity(): RouteEntity {
         waypoints = waypointsList,
         distance = distance,
         estimatedDuration = estimatedDuration,
+        transportMode = transportMode.key,
         isFavorite = isFavorite,
         createdAt = createdAt,
         updatedAt = updatedAt
@@ -68,6 +70,7 @@ fun RouteEntity.toDomain(): Route {
         waypoints = waypointsList,
         distance = distance,
         estimatedDuration = estimatedDuration,
+        transportMode = TransportMode.fromKey(transportMode),
         isFavorite = isFavorite,
         createdAt = createdAt,
         updatedAt = updatedAt

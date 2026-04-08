@@ -115,6 +115,7 @@ fun MapLibreMapView(
     userLocation: MapCenter,
     userBearing: Float = -1f,
     showUserLocation: Boolean,
+    isNavigating: Boolean = false,
     onMapMoved: (MapCenter, Int) -> Unit,
     onViewportChanged: (MapViewportBounds) -> Unit,
     onPlaceMarkerClick: (Place) -> Unit,
@@ -248,7 +249,7 @@ fun MapLibreMapView(
         },
         update = {
             val runtime = mapReadyState ?: return@AndroidView
-            runtime.syncCamera(center = center, zoomLevel = zoomLevel)
+            runtime.syncCamera(center = center, zoomLevel = zoomLevel, isNavigating = isNavigating)
             runtime.syncMarkers(
                 context = context,
                 places = places,
@@ -278,10 +279,11 @@ private data class MapLibreRuntimeState(
     var lastRouteSignature: Int = Int.MIN_VALUE,
     @Volatile var isDestroyed: Boolean = false
 ) {
-    fun syncCamera(center: MapCenter, zoomLevel: Int) {
+    fun syncCamera(center: MapCenter, zoomLevel: Int, isNavigating: Boolean = false) {
         if (isDestroyed) return
         val now = System.currentTimeMillis()
-        if (now - lastGestureFinishedAtMs < 900L) return
+        val gestureCooldown = if (isNavigating) 400L else 900L
+        if (now - lastGestureFinishedAtMs < gestureCooldown) return
         if (isGestureCameraMove) return
 
         val zoom = zoomLevel.coerceIn(10, 19)
@@ -293,7 +295,8 @@ private data class MapLibreRuntimeState(
         val longitudeDelta = abs(currentTarget.longitude - target.longitude)
         val zoomDelta = abs(current.zoom - zoom)
 
-        if (latitudeDelta < 0.00035 && longitudeDelta < 0.00035 && zoomDelta < 1.2) {
+        val positionThreshold = if (isNavigating) 0.00004 else 0.00035
+        if (latitudeDelta < positionThreshold && longitudeDelta < positionThreshold && zoomDelta < 1.2) {
             return
         }
 
@@ -392,8 +395,8 @@ private data class MapLibreRuntimeState(
     }
 
     private fun calculateUserSignature(userLocation: MapCenter): Int {
-        var result = (userLocation.latitude * 100000).roundToInt()
-        result = 31 * result + (userLocation.longitude * 100000).roundToInt()
+        var result = (userLocation.latitude * 1000000).roundToInt()
+        result = 31 * result + (userLocation.longitude * 1000000).roundToInt()
         return result
     }
 

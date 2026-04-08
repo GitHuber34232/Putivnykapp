@@ -12,6 +12,7 @@ import ua.kyiv.putivnyk.data.local.dao.UserPreferenceDao
 import ua.kyiv.putivnyk.data.local.entity.LocalizedStringEntity
 import ua.kyiv.putivnyk.data.local.entity.MapBookmarkEntity
 import ua.kyiv.putivnyk.data.local.entity.PlaceEntity
+import ua.kyiv.putivnyk.data.local.entity.PlaceFtsEntity
 import ua.kyiv.putivnyk.data.local.entity.RouteEntity
 import ua.kyiv.putivnyk.data.local.entity.SyncStateEntity
 import ua.kyiv.putivnyk.data.local.entity.UserPreferenceEntity
@@ -19,13 +20,14 @@ import ua.kyiv.putivnyk.data.local.entity.UserPreferenceEntity
 @Database(
     entities = [
         PlaceEntity::class,
+        PlaceFtsEntity::class,
         RouteEntity::class,
         MapBookmarkEntity::class,
         LocalizedStringEntity::class,
         UserPreferenceEntity::class,
         SyncStateEntity::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

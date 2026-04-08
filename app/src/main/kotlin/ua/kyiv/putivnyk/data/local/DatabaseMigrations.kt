@@ -88,11 +88,66 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_places_category ON places(category)")
+
+            db.execSQL(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS places_fts USING fts4(name, nameEn, description, content=`places`)"
+            )
+
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_places_fts_BEFORE_UPDATE
+                BEFORE UPDATE ON places BEGIN
+                    DELETE FROM places_fts WHERE docid=OLD.rowid;
+                END
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_places_fts_BEFORE_DELETE
+                BEFORE DELETE ON places BEGIN
+                    DELETE FROM places_fts WHERE docid=OLD.rowid;
+                END
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_places_fts_AFTER_UPDATE
+                AFTER UPDATE ON places BEGIN
+                    INSERT INTO places_fts(docid, name, nameEn, description)
+                    VALUES (NEW.rowid, NEW.name, NEW.nameEn, NEW.description);
+                END
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_places_fts_AFTER_INSERT
+                AFTER INSERT ON places BEGIN
+                    INSERT INTO places_fts(docid, name, nameEn, description)
+                    VALUES (NEW.rowid, NEW.name, NEW.nameEn, NEW.description);
+                END
+                """.trimIndent()
+            )
+
+            db.execSQL("INSERT INTO places_fts(places_fts) VALUES('rebuild')")
+        }
+    }
+
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE routes ADD COLUMN transportMode TEXT NOT NULL DEFAULT 'walking'")
+        }
+    }
+
     val ALL = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
         MIGRATION_3_4,
         MIGRATION_4_5,
-        MIGRATION_5_6
+        MIGRATION_5_6,
+        MIGRATION_6_7,
+        MIGRATION_7_8
     )
 }

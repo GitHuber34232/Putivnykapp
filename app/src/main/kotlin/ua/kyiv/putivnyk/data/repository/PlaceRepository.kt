@@ -83,11 +83,21 @@ class PlaceRepository @Inject constructor(
         val normalized = query.trim()
         if (normalized.isBlank()) return emptyList()
 
-        val currentSnapshot = getAllPlaces().first()
-        return currentSnapshot.filter { place ->
-            place.name.contains(normalized, ignoreCase = true) ||
-                place.nameEn?.contains(normalized, ignoreCase = true) == true ||
-                place.description?.contains(normalized, ignoreCase = true) == true
+        val sanitized = normalized.replace(Regex("[\"*()\\-]"), " ").trim()
+        if (sanitized.isBlank()) return emptyList()
+
+        return try {
+            val ftsQuery = sanitized.split(Regex("\\s+"))
+                .filter { it.isNotBlank() }
+                .joinToString(" ") { "$it*" }
+            placeDao.searchPlaces(ftsQuery).map { it.toDomain() }
+        } catch (_: Exception) {
+            val currentSnapshot = getAllPlaces().first()
+            currentSnapshot.filter { place ->
+                place.name.contains(normalized, ignoreCase = true) ||
+                    place.nameEn?.contains(normalized, ignoreCase = true) == true ||
+                    place.description?.contains(normalized, ignoreCase = true) == true
+            }
         }
     }
 }

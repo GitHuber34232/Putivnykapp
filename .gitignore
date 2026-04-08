@@ -3,6 +3,8 @@
 
 # Ignore Gradle build output directory
 build
+app/build/
+app/.cxx/
 
 # Signing secrets
 keystore.properties

@@ -36,4 +36,14 @@ interface PlaceDao {
 
     @Query("SELECT COUNT(*) FROM places")
     suspend fun getPlacesCount(): Int
+
+    @Query(
+        """
+        SELECT places.* FROM places
+        JOIN places_fts ON places.rowid = places_fts.rowid
+        WHERE places_fts MATCH :query
+        ORDER BY places.rating DESC
+        """
+    )
+    suspend fun searchPlaces(query: String): List<PlaceEntity>
 }

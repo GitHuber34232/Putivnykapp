@@ -9,6 +9,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.logging.HttpLoggingInterceptor
@@ -30,6 +31,8 @@ object AppModule {
             ?: error("Invalid EVENTS_BASE_URL")
         require(allowedBaseUrl.isHttps) { "EVENTS_BASE_URL must use HTTPS" }
 
+        val allowedHost = allowedBaseUrl.host
+
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
@@ -38,14 +41,23 @@ object AppModule {
             }
         }
 
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
+
+        if (!BuildConfig.DEBUG) {
+            val certificatePinner = CertificatePinner.Builder()
+                .add(allowedHost, "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=")
+                .build()
+            builder.certificatePinner(certificatePinner)
+        }
+
+        return builder
             .addInterceptor { chain ->
                 val request = chain.request()
                 val requestUrl = request.url
                 if (!requestUrl.isHttps) {
                     throw IOException("Blocked non-HTTPS request")
                 }
-                if (requestUrl.host != allowedBaseUrl.host || requestUrl.port != allowedBaseUrl.port) {
+                if (requestUrl.host != allowedHost || requestUrl.port != allowedBaseUrl.port) {
                     throw IOException("Blocked request to unexpected host")
                 }
                 chain.proceed(request)

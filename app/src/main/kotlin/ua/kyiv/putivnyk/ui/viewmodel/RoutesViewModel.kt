@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ua.kyiv.putivnyk.data.model.Route
 import ua.kyiv.putivnyk.data.model.RoutePoint
+import ua.kyiv.putivnyk.data.model.TransportMode
 import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.PlaceCategory
 import ua.kyiv.putivnyk.data.repository.PlaceRepository
@@ -278,7 +279,11 @@ class RoutesViewModel @Inject constructor(
         }
     }
 
-    fun createRouteFromPlaces(name: String, selectedPlaces: List<Place>) {
+    fun createRouteFromPlaces(
+        name: String,
+        selectedPlaces: List<Place>,
+        transportMode: TransportMode = TransportMode.WALKING
+    ) {
         if (selectedPlaces.size < 2) return
         val placesFiltered = selectedPlaces
             .distinctBy { it.id }
@@ -304,7 +309,8 @@ class RoutesViewModel @Inject constructor(
                         endPoint = end,
                         waypoints = intermediates,
                         distance = 0.0,
-                        estimatedDuration = 0
+                        estimatedDuration = 0,
+                        transportMode = transportMode
                     )
                 )
                 routeRepository.saveRoute(route)

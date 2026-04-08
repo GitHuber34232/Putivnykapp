@@ -5,7 +5,6 @@ import ua.kyiv.putivnyk.data.model.RoutePoint
 import ua.kyiv.putivnyk.domain.geo.NativeGeoEngine
 
 object RouteMetricsCalculator {
-    private const val WALKING_SPEED_METERS_PER_MINUTE = 83.3
     const val MAX_WAYPOINTS = 200
     private const val DUPLICATE_THRESHOLD_METERS = 15.0
 
@@ -18,9 +17,7 @@ object RouteMetricsCalculator {
 
         val distance = NativeGeoEngine.polylineDistanceMeters(points)
 
-        val duration = (distance / WALKING_SPEED_METERS_PER_MINUTE)
-            .toInt()
-            .coerceAtLeast(5)
+        val duration = RouteNavigationMetrics.estimateDurationMinutes(distance, route.transportMode)
 
         return route.copy(
             distance = distance,

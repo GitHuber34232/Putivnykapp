@@ -1,3 +1,0 @@
-D:/Putivnyk/app/.cxx/RelWithDebInfo/632f171h/arm64-v8a/CMakeFiles/putivnyk_native.dir
-D:/Putivnyk/app/.cxx/RelWithDebInfo/632f171h/arm64-v8a/CMakeFiles/edit_cache.dir
-D:/Putivnyk/app/.cxx/RelWithDebInfo/632f171h/arm64-v8a/CMakeFiles/rebuild_cache.dir

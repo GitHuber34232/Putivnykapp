@@ -16,6 +16,7 @@ data class RouteEntity(
     val waypoints: List<Double> = emptyList(),
     val distance: Double,
     val estimatedDuration: Int,
+    val transportMode: String = "walking",
     val isFavorite: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
