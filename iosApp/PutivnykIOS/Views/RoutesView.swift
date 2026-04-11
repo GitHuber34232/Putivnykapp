@@ -11,41 +11,14 @@ struct RoutesView: View {
 
     private var texts: [String: String] { localization.uiTexts }
 
+    private var deleteAlertBinding: Binding<Bool> {
+        Binding(get: { routeToDelete != nil }, set: { if !$0 { routeToDelete = nil } })
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if !viewModel.isLoaded {
-                    LoadingStateView(message: tr("routes.loading", fallback: "Завантаження маршрутів…", texts: texts))
-                } else if viewModel.routes.isEmpty {
-                    EmptyStateView(
-                        systemImage: "point.topleft.down.to.point.bottomright.curvepath",
-                        title: tr("routes.no_saved", fallback: "Немає збережених маршрутів", texts: texts),
-                        subtitle: tr("routes.create_hint", fallback: "Натисніть + щоб створити маршрут", texts: texts)
-                    )
-                } else {
-                    List(viewModel.routes, id: \.id) { route in
-                        RouteCardView(
-                            route: route,
-                            texts: texts,
-                            isActive: viewModel.activeRouteId == route.id,
-                            onFavoriteClick: { viewModel.toggleFavorite(route.id) },
-                            onDeleteClick: { routeToDelete = route },
-                            onActivateClick: {
-                                if viewModel.activeRouteId == route.id {
-                                    viewModel.deactivateRoute()
-                                } else {
-                                    viewModel.activateRouteOnMap(route.id)
-                                    onNavigateToMap()
-                                }
-                            },
-                            onReverseClick: { viewModel.reverseRoute(route.id) },
-                            onClick: { selectedRouteDetails = route }
-                        )
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                    }
-                    .listStyle(.plain)
-                }
+                content
             }
             .navigationTitle(tr("routes.title", fallback: "Маршрути", texts: texts))
             .searchable(text: Binding(
@@ -53,23 +26,10 @@ struct RoutesView: View {
                 set: { viewModel.updateSearchQuery($0) }
             ), prompt: tr("routes.search", fallback: "Пошук маршрутів", texts: texts))
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    HStack(spacing: 12) {
-                        Button {
-                            viewModel.toggleShowOnlyFavorites()
-                        } label: {
-                            Image(systemName: viewModel.showOnlyFavorites ? "heart.fill" : "heart")
-                        }
-                        Button {
-                            showCreateDialog = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                    }
-                }
+                toolbarContent
             }
             .alert(tr("routes.delete_title", fallback: "Видалити маршрут?", texts: texts),
-                   isPresented: Binding(get: { routeToDelete != nil }, set: { if !$0 { routeToDelete = nil } })) {
+                   isPresented: deleteAlertBinding) {
                 Button(tr("common.delete", fallback: "Видалити", texts: texts), role: .destructive) {
                     if let route = routeToDelete {
                         viewModel.deleteRoute(route.id)
@@ -80,9 +40,7 @@ struct RoutesView: View {
                     routeToDelete = nil
                 }
             } message: {
-                if let route = routeToDelete {
-                    Text("\(tr("routes.delete_confirm", fallback: "Ви впевнені, що хочете видалити маршрут", texts: texts)) \"\(route.name)\"?")
-                }
+                deleteAlertMessage
             }
             .sheet(item: $selectedRouteDetails) { route in
                 RouteDetailsSheet(route: route, viewModel: viewModel, texts: texts, onNavigateToMap: onNavigateToMap)
@@ -93,13 +51,83 @@ struct RoutesView: View {
                 }
             }
             .overlay {
-                if viewModel.isCreatingRoute {
-                    Color.black.opacity(0.3)
-                        .ignoresSafeArea()
-                        .overlay { ProgressView() }
+                loadingOverlay
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if !viewModel.isLoaded {
+            LoadingStateView(message: tr("routes.loading", fallback: "Завантаження маршрутів…", texts: texts))
+        } else if viewModel.routes.isEmpty {
+            EmptyStateView(
+                systemImage: "point.topleft.down.to.point.bottomright.curvepath",
+                title: tr("routes.no_saved", fallback: "Немає збережених маршрутів", texts: texts),
+                subtitle: tr("routes.create_hint", fallback: "Натисніть + щоб створити маршрут", texts: texts)
+            )
+        } else {
+            List(viewModel.routes, id: \.id) { route in
+                routeRow(route)
+            }
+            .listStyle(.plain)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            HStack(spacing: 12) {
+                Button {
+                    viewModel.toggleShowOnlyFavorites()
+                } label: {
+                    Image(systemName: viewModel.showOnlyFavorites ? "heart.fill" : "heart")
+                }
+                Button {
+                    showCreateDialog = true
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var deleteAlertMessage: some View {
+        if let route = routeToDelete {
+            Text("\(tr("routes.delete_confirm", fallback: "Ви впевнені, що хочете видалити маршрут", texts: texts)) \"\(route.name)\"?")
+        }
+    }
+
+    @ViewBuilder
+    private var loadingOverlay: some View {
+        if viewModel.isCreatingRoute {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .overlay { ProgressView() }
+        }
+    }
+
+    private func routeRow(_ route: Route) -> some View {
+        RouteCardView(
+            route: route,
+            texts: texts,
+            isActive: viewModel.activeRouteId == route.id,
+            onFavoriteClick: { viewModel.toggleFavorite(route.id) },
+            onDeleteClick: { routeToDelete = route },
+            onActivateClick: {
+                if viewModel.activeRouteId == route.id {
+                    viewModel.deactivateRoute()
+                } else {
+                    viewModel.activateRouteOnMap(route.id)
+                    onNavigateToMap()
+                }
+            },
+            onReverseClick: { viewModel.reverseRoute(route.id) },
+            onClick: { selectedRouteDetails = route }
+        )
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
     }
 }
 
@@ -129,64 +157,11 @@ private struct RouteDetailsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(tr("map.route_name", fallback: "Назва маршруту", texts: texts)) {
-                    TextField(tr("map.route_name", fallback: "Назва", texts: texts), text: $renameValue)
-                }
-
-                Section {
-                    Text("\(tr("routes.distance", fallback: "Відстань", texts: texts)): \(formatRouteDistance(route.distance))")
-                    Text("\(tr("routes.duration", fallback: "Тривалість", texts: texts)): \(formatRouteDuration(Int(route.estimatedDuration)))")
-                    Text("\(tr("routes.points", fallback: "Точок", texts: texts)): \(waypointsList.count + 2)")
-                }
-
-                if !waypointsList.isEmpty {
-                    Section(tr("routes.waypoints", fallback: "Проміжні точки", texts: texts)) {
-                        ForEach(Array(waypointsList.enumerated()), id: \.offset) { index, point in
-                            HStack {
-                                Text("\(index + 1). \(point.name ?? tr("routes.no_name", fallback: "Без назви", texts: texts))")
-                                    .font(.caption)
-                                Spacer()
-                                Button {
-                                    viewModel.removeWaypointAt(route.id, index: index)
-                                    dismiss()
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(.red)
-                                        .font(.caption)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                }
-
-                Section(tr("routes.add_point", fallback: "Додати точку", texts: texts)) {
-                    TextField(tr("routes.point_name", fallback: "Назва точки", texts: texts), text: $waypointName)
-                    TextField(tr("routes.latitude", fallback: "Широта", texts: texts), text: $waypointLat)
-                        .keyboardType(.decimalPad)
-                    TextField(tr("routes.longitude", fallback: "Довгота", texts: texts), text: $waypointLon)
-                        .keyboardType(.decimalPad)
-                    Button(tr("routes.add_point", fallback: "+ Точка", texts: texts)) {
-                        if let lat = Double(waypointLat), let lon = Double(waypointLon) {
-                            viewModel.addWaypoint(route.id, lat: lat, lon: lon, name: waypointName)
-                            dismiss()
-                        }
-                    }
-                }
-
-                Section {
-                    if waypointsList.count >= 2 {
-                        Button(tr("routes.optimize", fallback: "⚡ Оптимізувати порядок", texts: texts)) {
-                            viewModel.optimizeRoute(route.id)
-                            dismiss()
-                        }
-                    }
-                    Button(tr("routes.show_on_map", fallback: "🗺️ Показати на карті", texts: texts)) {
-                        viewModel.activateRouteOnMap(route.id)
-                        dismiss()
-                        onNavigateToMap()
-                    }
-                }
+                nameSection
+                metricsSection
+                waypointSection
+                addPointSection
+                actionsSection
             }
             .navigationTitle(route.name)
             .navigationBarTitleDisplayMode(.inline)
@@ -206,6 +181,96 @@ private struct RouteDetailsSheet: View {
 
     private var waypointsList: [RoutePoint] {
         route.waypoints as? [RoutePoint] ?? []
+    }
+
+    private var routeDistanceText: String {
+        formatRouteDistance(route.distance)
+    }
+
+    private var routeDurationText: String {
+        formatRouteDuration(Int(route.estimatedDuration))
+    }
+
+    private var routePointCountText: String {
+        String(waypointsList.count + 2)
+    }
+
+    @ViewBuilder
+    private var nameSection: some View {
+        Section(tr("map.route_name", fallback: "Назва маршруту", texts: texts)) {
+            TextField(tr("map.route_name", fallback: "Назва", texts: texts), text: $renameValue)
+        }
+    }
+
+    @ViewBuilder
+    private var metricsSection: some View {
+        Section {
+            Text("\(tr("routes.distance", fallback: "Відстань", texts: texts)): \(routeDistanceText)")
+            Text("\(tr("routes.duration", fallback: "Тривалість", texts: texts)): \(routeDurationText)")
+            Text("\(tr("routes.points", fallback: "Точок", texts: texts)): \(routePointCountText)")
+        }
+    }
+
+    @ViewBuilder
+    private var waypointSection: some View {
+        if !waypointsList.isEmpty {
+            Section(tr("routes.waypoints", fallback: "Проміжні точки", texts: texts)) {
+                ForEach(Array(waypointsList.enumerated()), id: \.offset) { index, point in
+                    waypointRow(index: index, point: point)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var addPointSection: some View {
+        Section(tr("routes.add_point", fallback: "Додати точку", texts: texts)) {
+            TextField(tr("routes.point_name", fallback: "Назва точки", texts: texts), text: $waypointName)
+            TextField(tr("routes.latitude", fallback: "Широта", texts: texts), text: $waypointLat)
+                .keyboardType(.decimalPad)
+            TextField(tr("routes.longitude", fallback: "Довгота", texts: texts), text: $waypointLon)
+                .keyboardType(.decimalPad)
+            Button(tr("routes.add_point", fallback: "+ Точка", texts: texts)) {
+                if let lat = Double(waypointLat), let lon = Double(waypointLon) {
+                    viewModel.addWaypoint(route.id, lat: lat, lon: lon, name: waypointName)
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var actionsSection: some View {
+        Section {
+            if waypointsList.count >= 2 {
+                Button(tr("routes.optimize", fallback: "⚡ Оптимізувати порядок", texts: texts)) {
+                    viewModel.optimizeRoute(route.id)
+                    dismiss()
+                }
+            }
+            Button(tr("routes.show_on_map", fallback: "🗺️ Показати на карті", texts: texts)) {
+                viewModel.activateRouteOnMap(route.id)
+                dismiss()
+                onNavigateToMap()
+            }
+        }
+    }
+
+    private func waypointRow(index: Int, point: RoutePoint) -> some View {
+        HStack {
+            Text("\(index + 1). \(point.name ?? tr("routes.no_name", fallback: "Без назви", texts: texts))")
+                .font(.caption)
+            Spacer()
+            Button {
+                viewModel.removeWaypointAt(route.id, index: index)
+                dismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.red)
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 

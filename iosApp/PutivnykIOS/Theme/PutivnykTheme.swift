@@ -34,30 +34,22 @@ extension Color {
     static let putivnykBackgroundDark = Color(red: 0.06, green: 0.06, blue: 0.09)
 }
 
-// MARK: - Liquid Glass Helpers (iOS 26+)
+// MARK: - Liquid Glass Helpers
 
 struct LiquidGlassModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive)
-        } else {
-            content
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-        }
+        content
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 }
 
 struct LiquidGlassCardModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular)
-        } else {
-            content
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
-        }
+        content
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
     }
 }
 
