@@ -17,7 +17,7 @@ final class PlacesViewModel: ObservableObject {
     init() { Task { await loadPlaces() } }
 
     func loadPlaces() async {
-        let snapshot = services.placeRepository.getAllPlacesSnapshot()
+        let snapshot = try? await services.placeRepository.getAllPlacesSnapshot()
         allPlaces = snapshot as? [Place] ?? []
         favoritePlaces = allPlaces.filter { $0.isFavorite }
         applyFilters()
@@ -51,11 +51,19 @@ final class PlacesViewModel: ObservableObject {
         }
     }
 
+    func toggleFavorite(_ placeId: Int64) {
+        toggleFavorite(placeId: placeId)
+    }
+
     func toggleVisited(placeId: Int64) {
         Task {
             try? await services.placeRepository.toggleVisited(placeId: placeId)
             await loadPlaces()
         }
+    }
+
+    func toggleVisited(_ placeId: Int64) {
+        toggleVisited(placeId: placeId)
     }
 
     func clearFilters() {

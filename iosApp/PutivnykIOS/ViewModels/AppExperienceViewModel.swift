@@ -18,14 +18,14 @@ final class AppExperienceViewModel: ObservableObject {
 
     func completeOnboarding() {
         Task {
-            try? await services.userPreferenceRepository.upsert(key: Self.keyOnboardingCompleted, value_: "true")
+            try? await services.userPreferenceRepository.upsert(key: Self.keyOnboardingCompleted, value: "true")
             showOnboarding = false
         }
     }
 
     func resetOnboarding() {
         Task {
-            try? await services.userPreferenceRepository.upsert(key: Self.keyOnboardingCompleted, value_: "false")
+            try? await services.userPreferenceRepository.upsert(key: Self.keyOnboardingCompleted, value: "false")
             showOnboarding = true
         }
     }

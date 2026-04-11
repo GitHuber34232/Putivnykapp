@@ -43,7 +43,7 @@ final class LocationDetailsViewModel: ObservableObject {
     func toggleFavorite() {
         guard let current = place else { return }
         Task {
-            try? await services.placeRepository.toggleFavorite(id: current.id)
+            try? await services.placeRepository.toggleFavorite(placeId: current.id)
             place = try? await services.placeRepository.getPlaceById(id: current.id)
             snackbarMessage = place?.isFavorite == true ? "added_to_favorites" : "removed_from_favorites"
         }
@@ -52,7 +52,7 @@ final class LocationDetailsViewModel: ObservableObject {
     func toggleVisited() {
         guard let current = place else { return }
         Task {
-            try? await services.placeRepository.toggleVisited(id: current.id)
+            try? await services.placeRepository.toggleVisited(placeId: current.id)
             place = try? await services.placeRepository.getPlaceById(id: current.id)
             snackbarMessage = place?.isVisited == true ? "marked_visited" : "unmarked_visited"
         }
@@ -61,7 +61,7 @@ final class LocationDetailsViewModel: ObservableObject {
     func openOnMap() {
         guard let current = place else { return }
         Task {
-            try? await services.userPreferenceRepository.upsert(key: "map.focus.placeId", value_: "\(current.id)")
+            try? await services.userPreferenceRepository.upsert(key: "map.focus.placeId", value: "\(current.id)")
         }
     }
 

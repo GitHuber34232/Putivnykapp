@@ -54,9 +54,9 @@ final class EventsViewModel: ObservableObject {
     func openEventOnMap(_ event: EventItem) {
         guard let lat = event.latitude, let lon = event.longitude else { return }
         Task {
-            try? await services.userPreferenceRepository.upsert(key: "map.focus.lat", value_: "\(lat)")
-            try? await services.userPreferenceRepository.upsert(key: "map.focus.lon", value_: "\(lon)")
-            try? await services.userPreferenceRepository.upsert(key: "map.focus.zoom", value_: "15")
+            try? await services.userPreferenceRepository.upsert(key: "map.focus.lat", value: "\(lat)")
+            try? await services.userPreferenceRepository.upsert(key: "map.focus.lon", value: "\(lon)")
+            try? await services.userPreferenceRepository.upsert(key: "map.focus.zoom", value: "15")
         }
     }
 

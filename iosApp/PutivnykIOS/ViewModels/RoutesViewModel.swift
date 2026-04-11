@@ -4,8 +4,10 @@ import PutivnykShared
 @MainActor
 final class RoutesViewModel: ObservableObject {
     @Published var routes: [Route] = []
+    @Published var availablePlaces: [Place] = []
     @Published var searchQuery: String = ""
     @Published var showOnlyFavorites: Bool = false
+    @Published var activeRouteId: Int64? = nil
     @Published var selectedRoute: Route? = nil
     @Published var isLoaded: Bool = false
     @Published var isCreatingRoute: Bool = false
@@ -15,7 +17,7 @@ final class RoutesViewModel: ObservableObject {
     init() { Task { await loadRoutes() } }
 
     func loadRoutes() async {
-        let snapshot = services.routeRepository.getAllRoutesSnapshot()
+        let snapshot = try? await services.routeRepository.getAllRoutesSnapshot()
         var all = snapshot as? [Route] ?? []
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
 
@@ -27,6 +29,7 @@ final class RoutesViewModel: ObservableObject {
             }
         }
         routes = all
+        await refreshActiveRouteState()
         isLoaded = true
     }
 
@@ -50,8 +53,40 @@ final class RoutesViewModel: ObservableObject {
     }
 
     func deleteRoute(_ route: Route) {
+        deleteRoute(route.id)
+    }
+
+    func deleteRoute(_ routeId: Int64) {
         Task {
+            guard let route = try? await services.routeRepository.getRouteById(id: routeId) else { return }
+            if activeRouteId == routeId {
+                activeRouteId = nil
+                try? await services.userPreferenceRepository.deleteByKey(key: "map.activeRouteId")
+                try? await services.userPreferenceRepository.deleteByKey(key: "map.pending.activeRouteId")
+            }
             try? await services.routeRepository.deleteRoute(route: route)
+            await loadRoutes()
+        }
+    }
+
+    func renameRoute(_ routeId: Int64, name: String) {
+        Task {
+            guard let route = try? await services.routeRepository.getRouteById(id: routeId) else { return }
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let updated = route.doCopy(
+                id: route.id,
+                name: trimmedName.isEmpty ? route.name : trimmedName,
+                description: route.description_,
+                startPoint: route.startPoint,
+                endPoint: route.endPoint,
+                waypoints: route.waypoints,
+                distance: route.distance,
+                estimatedDuration: route.estimatedDuration,
+                isFavorite: route.isFavorite,
+                createdAt: route.createdAt,
+                updatedAt: PlatformClock.shared.currentTimeMillis()
+            )
+            try? await services.routeRepository.updateRoute(route: updated)
             await loadRoutes()
         }
     }
@@ -123,9 +158,32 @@ final class RoutesViewModel: ObservableObject {
         }
     }
 
+    func createRouteFromPlaces(_ name: String, places: [Place]) {
+        createRouteFromPlaces(name: name, selectedPlaces: places)
+    }
+
     func activateRouteOnMap(routeId: Int64) {
+        activeRouteId = routeId
         Task {
-            try? await services.userPreferenceRepository.upsert(key: "map.pending.activeRouteId", value_: String(routeId))
+            try? await services.userPreferenceRepository.upsert(key: "map.pending.activeRouteId", value: String(routeId))
+        }
+    }
+
+    func deactivateRoute() {
+        activeRouteId = nil
+        Task {
+            try? await services.userPreferenceRepository.deleteByKey(key: "map.activeRouteId")
+            try? await services.userPreferenceRepository.deleteByKey(key: "map.pending.activeRouteId")
+        }
+    }
+
+    func loadAvailablePlaces() {
+        Task {
+            let snapshot = try? await services.placeRepository.getAllPlacesSnapshot()
+            let places = snapshot as? [Place] ?? []
+            availablePlaces = places.sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
         }
     }
 
@@ -182,7 +240,7 @@ final class RoutesViewModel: ObservableObject {
         return RouteMetricsCalculator.shared.withMetrics(
             route: route,
             distanceMeters: resolvedDistance,
-            durationSeconds: resolvedDurationSeconds != nil ? NSNumber(value: resolvedDurationSeconds!) : nil
+            durationSeconds: resolvedDurationSeconds.map { KotlinDouble(value: $0) }
         )
     }
 
@@ -193,5 +251,11 @@ final class RoutesViewModel: ObservableObject {
         }
         points.append(route.endPoint)
         return points
+    }
+
+    private func refreshActiveRouteState() async {
+        let pendingRouteId = (try? await services.userPreferenceRepository.getString(key: "map.pending.activeRouteId", defaultValue: "")) ?? ""
+        let activeRouteValue = (try? await services.userPreferenceRepository.getString(key: "map.activeRouteId", defaultValue: "")) ?? ""
+        activeRouteId = Int64(pendingRouteId) ?? Int64(activeRouteValue)
     }
 }

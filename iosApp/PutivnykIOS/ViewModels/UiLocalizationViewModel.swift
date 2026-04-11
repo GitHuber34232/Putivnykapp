@@ -24,7 +24,7 @@ final class UiLocalizationViewModel: ObservableObject {
     func setAutoMode(_ enabled: Bool) {
         isAutoMode = enabled
         Task {
-            try? await services.userPreferenceRepository.upsert(key: "ui.lang.mode", value_: enabled ? "auto" : "manual")
+            try? await services.userPreferenceRepository.upsert(key: "ui.lang.mode", value: enabled ? "auto" : "manual")
             await resolveLanguage()
         }
     }
@@ -33,8 +33,8 @@ final class UiLocalizationViewModel: ObservableObject {
         manualLanguage = iso
         isAutoMode = false
         Task {
-            try? await services.userPreferenceRepository.upsert(key: "ui.lang.manual", value_: iso)
-            try? await services.userPreferenceRepository.upsert(key: "ui.lang.mode", value_: "manual")
+            try? await services.userPreferenceRepository.upsert(key: "ui.lang.manual", value: iso)
+            try? await services.userPreferenceRepository.upsert(key: "ui.lang.mode", value: "manual")
             await resolveLanguage()
         }
     }

@@ -204,7 +204,7 @@ struct RouteCardView: View {
     }
 
     private var waypointCount: Int {
-        (route.waypoints as? [Any])?.count ?? 0 + 2
+        ((route.waypoints as? [Any])?.count ?? 0) + 2
     }
 }
 

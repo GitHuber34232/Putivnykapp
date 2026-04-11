@@ -205,7 +205,7 @@ final class MapViewModel: ObservableObject {
 
     func setSortMode(_ mode: PlaceSortMode) {
         sortMode = mode
-        Task { try? await services.userPreferenceRepository.upsert(key: "map.sort.mode", value_: mode.name) }
+        Task { try? await services.userPreferenceRepository.upsert(key: "map.sort.mode", value: mode.name) }
         applyFilters()
     }
 
@@ -227,7 +227,7 @@ final class MapViewModel: ObservableObject {
     }
 
     func toggleFavorite(_ placeId: Int64) {
-        Task { try? await services.placeRepository.toggleFavorite(id: placeId) }
+        Task { try? await services.placeRepository.toggleFavorite(placeId: placeId) }
         applyFilters()
     }
 
@@ -264,7 +264,7 @@ final class MapViewModel: ObservableObject {
         Task {
             guard let route = try? await services.routeRepository.getRouteById(id: routeId) else { return }
             activeRoute = route
-            try? await services.userPreferenceRepository.upsert(key: "map.activeRouteId", value_: "\(routeId)")
+            try? await services.userPreferenceRepository.upsert(key: "map.activeRouteId", value: "\(routeId)")
             updateRouteWaypoints(route)
             await fetchWalkingDirections(for: route)
         }
@@ -296,6 +296,7 @@ final class MapViewModel: ObservableObject {
         isCreatingRoute = true
         Task {
             defer { isCreatingRoute = false }
+            let timestamp = PlatformClock.shared.currentTimeMillis()
             let baseRoute = Route(
                 id: 0,
                 name: "→ \(destination.name)",
@@ -305,7 +306,9 @@ final class MapViewModel: ObservableObject {
                 waypoints: [],
                 distance: 0,
                 estimatedDuration: 0,
-                isFavorite: false
+                isFavorite: false,
+                createdAt: timestamp,
+                updatedAt: timestamp
             )
             let (route, geometry) = await enrichRouteMetrics(baseRoute)
             do {
@@ -324,7 +327,7 @@ final class MapViewModel: ObservableObject {
                     updatedAt: route.updatedAt
                 )
                 activeRoute = saved
-                try? await services.userPreferenceRepository.upsert(key: "map.activeRouteId", value_: "\(savedId)")
+                try? await services.userPreferenceRepository.upsert(key: "map.activeRouteId", value: "\(savedId)")
                 updateRouteWaypoints(saved)
                 applyWalkingRouteResult(route: saved, geometry: geometry, distanceMeters: route.distance, durationMinutes: Int(route.estimatedDuration))
             } catch {}
@@ -390,15 +393,30 @@ final class MapViewModel: ObservableObject {
 
     func saveCurrentViewAsBookmark() {
         Task {
+            let timestamp = PlatformClock.shared.currentTimeMillis()
             let bm = MapBookmark(
                 id: 0,
                 title: "Київ \(String(format: "%.4f", mapCenter.latitude)), \(String(format: "%.4f", mapCenter.longitude))",
                 note: "Автозбереження позиції карти",
                 latitude: mapCenter.latitude, longitude: mapCenter.longitude,
-                zoomLevel: Int32(zoomLevel)
+                zoomLevel: Int32(zoomLevel),
+                createdAt: timestamp,
+                updatedAt: timestamp
             )
-            try? await services.mapBookmarkRepository.save(bookmark: bm)
-            await loadBookmarks()
+            if let savedId = try? await services.mapBookmarkRepository.save(bookmark: bm) {
+                bookmarks.append(
+                    MapBookmark(
+                        id: savedId.int64Value,
+                        title: bm.title,
+                        note: bm.note,
+                        latitude: bm.latitude,
+                        longitude: bm.longitude,
+                        zoomLevel: bm.zoomLevel,
+                        createdAt: bm.createdAt,
+                        updatedAt: bm.updatedAt
+                    )
+                )
+            }
         }
     }
 
@@ -413,14 +431,14 @@ final class MapViewModel: ObservableObject {
     func removeBookmark(_ bookmark: MapBookmark) {
         Task {
             try? await services.mapBookmarkRepository.delete(bookmark: bookmark)
-            await loadBookmarks()
+            bookmarks.removeAll { $0.id == bookmark.id }
         }
     }
 
     func clearAllBookmarks() {
         Task {
             try? await services.mapBookmarkRepository.deleteAll()
-            await loadBookmarks()
+            bookmarks = []
         }
     }
 
@@ -444,10 +462,7 @@ final class MapViewModel: ObservableObject {
     }
 
     private func loadBookmarks() async {
-        do {
-            let bms = try await services.mapBookmarkRepository.getAll()
-            bookmarks = bms as? [MapBookmark] ?? []
-        } catch {}
+        bookmarks = []
     }
 
     private func updateRouteWaypoints(_ route: Route) {
@@ -721,13 +736,13 @@ final class MapViewModel: ObservableObject {
         guard distanceChanged || durationChanged else { return }
 
         Task {
-            guard let latest = try? await services.routeRepository.getRouteById(id: route.id) else { return }
+            guard let latest = try? await self.services.routeRepository.getRouteById(id: route.id) else { return }
             let updated = RouteMetricsCalculator.shared.withMetrics(
                 route: latest,
                 distanceMeters: distanceMeters,
-                durationSeconds: durationSeconds != nil ? NSNumber(value: durationSeconds!) : nil
+                durationSeconds: durationSeconds.map { KotlinDouble(value: $0) }
             )
-            try? await services.routeRepository.updateRoute(route: updated)
+            try? await self.services.routeRepository.updateRoute(route: updated)
         }
     }
 
@@ -762,9 +777,12 @@ final class MapViewModel: ObservableObject {
     }
 
     private func restoreMapState() async {
-        let lat = Double(try? await services.userPreferenceRepository.getString(key: "map.center.lat", defaultValue: "") ?? "")
-        let lon = Double(try? await services.userPreferenceRepository.getString(key: "map.center.lon", defaultValue: "") ?? "")
-        let zoom = Int(try? await services.userPreferenceRepository.getString(key: "map.zoom", defaultValue: "") ?? "")
+        let latValue = (try? await services.userPreferenceRepository.getString(key: "map.center.lat", defaultValue: "")) ?? ""
+        let lonValue = (try? await services.userPreferenceRepository.getString(key: "map.center.lon", defaultValue: "")) ?? ""
+        let zoomValue = (try? await services.userPreferenceRepository.getString(key: "map.zoom", defaultValue: "")) ?? ""
+        let lat = Double(latValue)
+        let lon = Double(lonValue)
+        let zoom = Int(zoomValue)
 
         if let lat, let lon { mapCenter = MapCenter(latitude: lat, longitude: lon) }
         if let zoom { zoomLevel = zoom }
@@ -777,9 +795,9 @@ final class MapViewModel: ObservableObject {
 
     private func schedulePersistMapState() {
         Task {
-            try? await services.userPreferenceRepository.upsert(key: "map.center.lat", value_: "\(mapCenter.latitude)")
-            try? await services.userPreferenceRepository.upsert(key: "map.center.lon", value_: "\(mapCenter.longitude)")
-            try? await services.userPreferenceRepository.upsert(key: "map.zoom", value_: "\(zoomLevel)")
+            try? await services.userPreferenceRepository.upsert(key: "map.center.lat", value: "\(mapCenter.latitude)")
+            try? await services.userPreferenceRepository.upsert(key: "map.center.lon", value: "\(mapCenter.longitude)")
+            try? await services.userPreferenceRepository.upsert(key: "map.zoom", value: "\(zoomLevel)")
         }
     }
 
@@ -793,9 +811,12 @@ final class MapViewModel: ObservableObject {
             }
         }
 
-        let lat = Double(try? await services.userPreferenceRepository.getString(key: "map.focus.lat", defaultValue: "") ?? "")
-        let lon = Double(try? await services.userPreferenceRepository.getString(key: "map.focus.lon", defaultValue: "") ?? "")
-        let zoom = Int(try? await services.userPreferenceRepository.getString(key: "map.focus.zoom", defaultValue: "") ?? "")
+        let latValue = (try? await services.userPreferenceRepository.getString(key: "map.focus.lat", defaultValue: "")) ?? ""
+        let lonValue = (try? await services.userPreferenceRepository.getString(key: "map.focus.lon", defaultValue: "")) ?? ""
+        let zoomValue = (try? await services.userPreferenceRepository.getString(key: "map.focus.zoom", defaultValue: "")) ?? ""
+        let lat = Double(latValue)
+        let lon = Double(lonValue)
+        let zoom = Int(zoomValue)
         if let lat, let lon {
             updateMapCenter(lat, lon)
             if let zoom { updateZoomLevel(zoom) }
