@@ -29,7 +29,7 @@
 На Linux:
 
 ```bash
-./gradlew.sh assembleDebug
+./gradlew assembleDebug
 ```
 
 На Windows:
@@ -47,12 +47,13 @@ app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 Для release bundle:
 
 ```bash
-./gradlew.sh bundleRelease
+./gradlew bundleRelease
 ```
 
 Кілька нормальних практичних приміток, без сюрпризів:
 
-- якщо це перший запуск на Linux, `./gradlew.sh` може довго щось качати — це не зависання, він підтягне Android command-line tools, SDK, CMake і NDK
+- якщо це перший запуск на Linux, `./gradlew` може довго щось качати — це не зависання, він підтягне Android command-line tools, SDK, CMake і NDK
+- `./gradlew.sh` теж залишився і працює, але основна команда для Linux тепер `./gradlew`
 - за замовчуванням SDK для Linux ставиться в `~/Android/Sdk`
 - якщо треба інший каталог SDK, можна задати `PUTIVNYK_ANDROID_SDK_DIR=/шлях/до/sdk`
 - якщо автодокачування не потрібне, задайте `PUTIVNYK_BOOTSTRAP_ANDROID_SDK=false`

@@ -13,7 +13,7 @@ fi
 ##############################################################################
 
 APP_HOME="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-APP_BASE_NAME="${0##*/}"
+APP_BASE_NAME="${GRADLEW_APP_BASE_NAME:-${0##*/}}"
 CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
 declare -a DEFAULT_JVM_OPTS=("-Xmx64m" "-Xms64m")
 
@@ -65,11 +65,11 @@ fail() {
 }
 
 warn() {
-    printf 'gradlew.sh: warning: %s\n' "$1" >&2
+    printf '%s: warning: %s\n' "$APP_BASE_NAME" "$1" >&2
 }
 
 info() {
-    printf 'gradlew.sh: %s\n' "$1" >&2
+    printf '%s: %s\n' "$APP_BASE_NAME" "$1" >&2
 }
 
 is_truthy() {
