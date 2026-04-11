@@ -20,23 +20,23 @@ final class HomeViewModel: ObservableObject {
     init() { Task { await load() } }
 
     func load() async {
-        let snapshot = try? await services.placeRepository.getAllPlacesSnapshot()
-        allPlaces = snapshot as? [Place] ?? []
+        allPlaces = (try? await services.placeRepository.getAllPlacesSnapshot()) ?? []
         let savedPinned = (try? await services.userPreferenceRepository.getString(key: "home.pinned_place_ids", defaultValue: "")) ?? ""
         pinnedIds = Set(savedPinned.split(separator: ",").compactMap { Int64($0.trimmingCharacters(in: .whitespaces)) })
 
         pinnedPlaces = allPlaces.filter { pinnedIds.contains($0.id) }
         availablePlacesForPinning = allPlaces.filter { !pinnedIds.contains($0.id) }
 
+        let excludedIds = Set(pinnedIds.map { KotlinLong(value: $0) })
         let favorites = allPlaces.filter { $0.isFavorite }
         let reco = services.recommendationEngine.recommend(
             allPlaces: allPlaces,
             favorites: favorites,
-            excludeIds: pinnedIds as NSSet,
+            excludeIds: excludedIds,
             userLat: nil, userLon: nil,
             limit: Int32(allPlaces.count)
         )
-        allRecommendedPlaces = reco as? [Place] ?? []
+        allRecommendedPlaces = reco
         recommendedPlaces = Array(allRecommendedPlaces.prefix(recommendationLimit))
         hasMoreRecommendations = allRecommendedPlaces.count > recommendedPlaces.count
         isLoaded = true

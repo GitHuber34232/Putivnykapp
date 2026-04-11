@@ -5,7 +5,7 @@ import PutivnykShared
 struct MapView: View {
     @EnvironmentObject var localization: UiLocalizationViewModel
     @StateObject private var viewModel = MapViewModel()
-    @StateObject private var locationService = LocationService()
+    @StateObject private var locationService = LocationService.shared
     @State private var mapPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 50.4501, longitude: 30.5234),
@@ -316,7 +316,7 @@ struct MapView: View {
                     Button(tr("map.all", fallback: "Всі", texts: texts)) {
                         viewModel.selectCategory(nil)
                     }
-                    ForEach(PlaceCategory.entries.filter { $0 != .toilet }, id: \.name) { cat in
+                    ForEach(PlaceCategory.filterOptions, id: \.name) { cat in
                         Button {
                             viewModel.selectCategory(cat)
                         } label: {
@@ -332,7 +332,7 @@ struct MapView: View {
                 }
 
                 Section(tr("map.sort", fallback: "Сортування", texts: texts)) {
-                    ForEach(PlaceSortMode.entries, id: \.name) { mode in
+                    ForEach(PlaceSortMode.allModes, id: \.name) { mode in
                         Button {
                             viewModel.setSortMode(mode)
                         } label: {
@@ -427,8 +427,8 @@ struct MapView: View {
         case .theater: return .purple
         case .restaurant: return .red
         case .park: return .green
-        case .monument: return .gray
-        case .church: return .brown
+        case .architectureMonument: return .gray
+        case .cathedral, .monastery: return .brown
         case .toilet: return .cyan
         default: return .blue
         }

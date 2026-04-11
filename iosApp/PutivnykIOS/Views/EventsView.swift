@@ -163,7 +163,7 @@ struct EventsView: View {
     }
 }
 
-extension EventItem: @retroactive Identifiable {}
+extension EventItem: Identifiable {}
 
 // MARK: - Event Card Row
 

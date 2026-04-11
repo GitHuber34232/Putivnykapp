@@ -64,15 +64,9 @@ final class IosSyncService: ObservableObject {
             fs.writeText(path: "\(cacheDir)/routes.json",
                          text: OfflineCacheSnapshotCodec.shared.encodeRoutes(routes: allRoutes))
 
-            let rawPrefs = try await services.userPreferenceRepository.getAllAsMap()
-            var prefs: [String: String] = [:]
-            for (key, value) in rawPrefs {
-                if let k = key as? String, let v = value as? String {
-                    prefs[k] = v
-                }
-            }
+            let prefs = try await services.userPreferenceRepository.getAllAsMap()
             fs.writeText(path: "\(cacheDir)/preferences.json",
-                         text: OfflineCacheSnapshotCodec.shared.encodePreferences(prefs: prefs))
+                         text: OfflineCacheSnapshotCodec.shared.encodePreferences(preferences: prefs))
 
             try await services.syncStateRepository.setSuccess(entityName: entity, syncedAt: currentTimeMillis())
             telemetry.trackEvent("offline_cache_sync_success", attributes: [

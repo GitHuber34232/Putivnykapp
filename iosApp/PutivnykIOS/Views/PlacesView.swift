@@ -63,7 +63,7 @@ struct PlacesView: View {
                     action: { viewModel.selectCategory(nil) }
                 )
 
-                ForEach(PlaceCategory.entries.filter { $0 != .toilet }, id: \.name) { category in
+                ForEach(PlaceCategory.filterOptions, id: \.name) { category in
                     chipButton(
                         label: "\(category.icon) \(trCategory(category, texts: texts))",
                         isSelected: viewModel.selectedCategory == category,
@@ -80,7 +80,7 @@ struct PlacesView: View {
     private var sortChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(PlaceSortMode.entries, id: \.name) { mode in
+                ForEach(PlaceSortMode.allModes, id: \.name) { mode in
                     chipButton(
                         label: trSortMode(mode, texts: texts),
                         isSelected: viewModel.sortMode == mode,

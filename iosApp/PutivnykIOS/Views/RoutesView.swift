@@ -103,7 +103,7 @@ struct RoutesView: View {
     }
 }
 
-extension PutivnykShared.Route: @retroactive Identifiable {}
+extension PutivnykShared.Route: Identifiable {}
 
 // MARK: - Route Details Sheet
 

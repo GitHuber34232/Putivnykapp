@@ -20,6 +20,34 @@ func tr(_ key: String, fallback: String = "", texts: [String: String]) -> String
     texts[key] ?? (fallback.isEmpty ? key : fallback)
 }
 
+extension PlaceCategory {
+    static let filterOptions: [PlaceCategory] = [
+        .park,
+        .museum,
+        .theater,
+        .restaurant,
+        .cathedral,
+        .monastery,
+        .architectureMonument,
+        .square,
+        .street,
+        .district,
+        .stadium,
+        .embankment,
+        .famousPlace,
+        .other
+    ]
+}
+
+extension PlaceSortMode {
+    static let allModes: [PlaceSortMode] = [
+        .popularity,
+        .rating,
+        .distance,
+        .recommended
+    ]
+}
+
 // MARK: - Category translation
 
 func trCategory(_ category: PlaceCategory, texts: [String: String]) -> String {

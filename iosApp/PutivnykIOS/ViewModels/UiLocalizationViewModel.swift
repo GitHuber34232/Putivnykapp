@@ -6,14 +6,9 @@ final class UiLocalizationViewModel: ObservableObject {
     @Published var effectiveLanguage: String = "uk"
     @Published var isAutoMode: Bool = true
     @Published var manualLanguage: String = "uk"
-    @Published var uiTexts: [String: String] = Self.defaultsUk
+    @Published var uiTexts: [String: String] = UiLocalizationViewModel.defaultsUk
 
-    let languages: [SupportedLanguages.LanguageEntry] = {
-        let list = SupportedLanguages.shared.majorIso639_1
-        var result = [SupportedLanguages.LanguageEntry]()
-        for i in 0..<list.count { result.append(list[i]) }
-        return result
-    }()
+    let languages: [LanguageInfo] = SupportedLanguages.shared.majorIso639_1
 
     private let services = AppServices.shared
 

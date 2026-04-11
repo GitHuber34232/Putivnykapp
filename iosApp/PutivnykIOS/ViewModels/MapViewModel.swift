@@ -296,7 +296,7 @@ final class MapViewModel: ObservableObject {
         isCreatingRoute = true
         Task {
             defer { isCreatingRoute = false }
-            let timestamp = PlatformClock.shared.currentTimeMillis()
+            let timestamp = currentTimeMillis()
             let baseRoute = Route(
                 id: 0,
                 name: "→ \(destination.name)",
@@ -393,7 +393,7 @@ final class MapViewModel: ObservableObject {
 
     func saveCurrentViewAsBookmark() {
         Task {
-            let timestamp = PlatformClock.shared.currentTimeMillis()
+            let timestamp = currentTimeMillis()
             let bm = MapBookmark(
                 id: 0,
                 title: "Київ \(String(format: "%.4f", mapCenter.latitude)), \(String(format: "%.4f", mapCenter.longitude))",
@@ -755,6 +755,10 @@ final class MapViewModel: ObservableObject {
         distanceMeters / 1.25
     }
 
+    private func currentTimeMillis() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
+    }
+
     private func checkPoiProximity(lat: Double, lon: Double, routePoints: [RoutePoint], currentIdx: Int) {
         guard poiPromptPlace == nil else { return }
         let poiCategories: Set<PlaceCategory> = [.restaurant, .museum, .theater]
@@ -787,7 +791,7 @@ final class MapViewModel: ObservableObject {
         if let lat, let lon { mapCenter = MapCenter(latitude: lat, longitude: lon) }
         if let zoom { zoomLevel = zoom }
         let mode = (try? await services.userPreferenceRepository.getString(key: "map.sort.mode", defaultValue: "")) ?? ""
-        if let parsed = PlaceSortMode.entries.first(where: { $0.name.uppercased() == mode.uppercased() }) {
+        if let parsed = PlaceSortMode.allModes.first(where: { $0.name.uppercased() == mode.uppercased() }) {
             sortMode = parsed
         }
         visibleBounds = Self.computeViewportBounds(center: mapCenter, zoom: zoomLevel)

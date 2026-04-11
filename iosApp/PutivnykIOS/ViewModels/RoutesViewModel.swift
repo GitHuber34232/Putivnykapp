@@ -84,7 +84,7 @@ final class RoutesViewModel: ObservableObject {
                 estimatedDuration: route.estimatedDuration,
                 isFavorite: route.isFavorite,
                 createdAt: route.createdAt,
-                updatedAt: PlatformClock.shared.currentTimeMillis()
+                updatedAt: currentTimeMillis()
             )
             try? await services.routeRepository.updateRoute(route: updated)
             await loadRoutes()
@@ -117,12 +117,12 @@ final class RoutesViewModel: ObservableObject {
                 description: route.description_,
                 startPoint: route.endPoint,
                 endPoint: route.startPoint,
-                waypoints: route.waypoints.reversed(),
+                waypoints: Array(route.waypoints.reversed()),
                 distance: route.distance,
                 estimatedDuration: route.estimatedDuration,
                 isFavorite: route.isFavorite,
                 createdAt: route.createdAt,
-                updatedAt: PlatformClock.shared.currentTimeMillis()
+                updatedAt: currentTimeMillis()
             )
             try? await services.routeRepository.updateRoute(route: await enrichRouteMetrics(reversed))
             await loadRoutes()
@@ -149,8 +149,8 @@ final class RoutesViewModel: ObservableObject {
                 distance: 0,
                 estimatedDuration: 0,
                 isFavorite: false,
-                createdAt: PlatformClock.shared.currentTimeMillis(),
-                updatedAt: PlatformClock.shared.currentTimeMillis()
+                createdAt: currentTimeMillis(),
+                updatedAt: currentTimeMillis()
             )
             try? await services.routeRepository.saveRoute(route: await enrichRouteMetrics(route))
             isCreatingRoute = false
@@ -217,7 +217,7 @@ final class RoutesViewModel: ObservableObject {
                 estimatedDuration: route.estimatedDuration,
                 isFavorite: route.isFavorite,
                 createdAt: route.createdAt,
-                updatedAt: PlatformClock.shared.currentTimeMillis()
+                updatedAt: currentTimeMillis()
             )
             try? await services.routeRepository.updateRoute(route: await enrichRouteMetrics(updated))
             await loadRoutes()
@@ -257,5 +257,9 @@ final class RoutesViewModel: ObservableObject {
         let pendingRouteId = (try? await services.userPreferenceRepository.getString(key: "map.pending.activeRouteId", defaultValue: "")) ?? ""
         let activeRouteValue = (try? await services.userPreferenceRepository.getString(key: "map.activeRouteId", defaultValue: "")) ?? ""
         activeRouteId = Int64(pendingRouteId) ?? Int64(activeRouteValue)
+    }
+
+    private func currentTimeMillis() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
     }
 }

@@ -10,7 +10,7 @@ final class LocationDetailsViewModel: ObservableObject {
     @Published var isTranslating = false
     @Published var snackbarMessage: String?
 
-    let availableLanguages = SupportedLanguages.shared.majorIso639_1
+    let availableLanguages: [LanguageInfo] = SupportedLanguages.shared.majorIso639_1
 
     private let placeId: Int64
     private let services = AppServices.shared
@@ -28,14 +28,14 @@ final class LocationDetailsViewModel: ObservableObject {
         } else {
             rawLang = Locale.current.language.languageCode?.identifier ?? "uk"
         }
-        selectedLanguage = SupportedLanguages.shared.contains(code: rawLang) ? rawLang : "uk"
+        selectedLanguage = SupportedLanguages.shared.contains(isoCode: rawLang) ? rawLang : "uk"
         place = try? await services.placeRepository.getPlaceById(id: placeId)
         isLoaded = true
         applyTranslation()
     }
 
     func setLanguage(_ isoCode: String) {
-        guard SupportedLanguages.shared.contains(code: isoCode) else { return }
+        guard SupportedLanguages.shared.contains(isoCode: isoCode) else { return }
         selectedLanguage = isoCode
         applyTranslation()
     }

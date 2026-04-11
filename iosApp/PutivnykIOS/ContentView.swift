@@ -7,7 +7,8 @@ final class SharedBootstrapViewModel: ObservableObject {
     @Published var supportedLanguages: [String]
     @Published var runtimeSummary: [String]
 
-    init(api: PutivnykSharedApi = PutivnykSharedApi()) {
+    init(api: PutivnykSharedApi? = nil) {
+        let api = api ?? AppServices.shared.sharedApi
         let languages = api.supportedLanguages().compactMap { $0 as? LanguageInfo }
         let runtime = IosRuntimeVerifier().currentStatus(language: "en")
         headline = "Shared KMP module connected"

@@ -7,6 +7,13 @@ final class AppServices: ObservableObject {
     static let shared = AppServices()
 
     let platformServices = IosPlatformServices()
+    private let networkFactory = IosNetworkFactory()
+
+    private var eventsBaseUrl: String {
+        let configured = (Bundle.main.object(forInfoDictionaryKey: "PUTIVNYK_EVENTS_BASE_URL") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return configured.isEmpty ? "http://127.0.0.1:3000" : configured
+    }
 
     // Repositories
     lazy var placeRepository: IosPlaceRepository = {
@@ -40,10 +47,18 @@ final class AppServices: ObservableObject {
     }()
 
     // Domain use cases
-    lazy var sharedApi: PutivnykSharedApi = PutivnykSharedApi()
     lazy var routeOptimizer: RouteOptimizer = RouteOptimizer()
     lazy var recommendationEngine: RecommendationEngine = RecommendationEngine()
-    lazy var smartRouteBuilder: SmartRouteBuilder = SmartRouteBuilder()
+    lazy var smartRouteBuilder: SmartRouteBuilder = {
+        SmartRouteBuilder(routeOptimizer: routeOptimizer)
+    }()
+    lazy var sharedApi: PutivnykSharedApi = {
+        PutivnykSharedApi(
+            routeOptimizer: routeOptimizer,
+            recommendationEngine: recommendationEngine,
+            smartRouteBuilder: smartRouteBuilder
+        )
+    }()
 
     // Platform services
     lazy var uiTranslationsProvider: BundleUiTranslationsProvider = {
@@ -60,11 +75,11 @@ final class AppServices: ObservableObject {
 
     // Network
     lazy var walkingDirectionsProvider: KtorWalkingDirectionsProvider = {
-        KtorWalkingDirectionsProvider()
+        networkFactory.createWalkingDirectionsProvider()
     }()
 
     lazy var eventsRepository: KtorEventsRepository = {
-        KtorEventsRepository()
+        networkFactory.createEventsRepository(baseUrl: eventsBaseUrl)
     }()
 
     // Telemetry & Sync
