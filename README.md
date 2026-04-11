@@ -1,25 +1,80 @@
 # Putivnyk
 
-Android-додаток для самостійних прогулянок Києвом.
+Путівник по Києву у форматі Android-додатка. Основна ідея проста: відкрити карту, знайти місця, зібрати свій маршрут і не залежати повністю від мережі.
 
-## Можливості
-- Офлайн-карта Києва
-- Маршрути, локації, рекомендації
-- Пошук, фільтри, збереження улюбленого
-- Офлайн-переклад (ML Kit, 28 мов)
-- Синхронізація з сервером (Node.js backend)
-- Підтримка темної теми
+У репозиторії зараз дві частини:
 
-## Технології
-- Kotlin, Jetpack Compose, Hilt, Room, WorkManager
-- MapLibre GL, Retrofit, OkHttp, ML Kit
-- C++ (JNI) для гео-обчислень
-- Node.js backend (Express, Cheerio)
+- `app/` — сам Android-додаток
+- `backend/` — невеликий Node.js сервіс для подій
 
-## Збірка
-- Android Studio Hedgehog+ (AGP 9, Kotlin 2.3)
-- `./gradlew assembleDebug` — debug APK
-- `./gradlew bundleRelease` + bundletool — release APK
+Що вже є в застосунку:
 
-## Автор
-Розроблено з любов'ю до Києва. Всі права захищено.
+- офлайн-карта
+- збережені маршрути
+- місця з категоріями, пошуком і фільтрами
+- вибране та історія відвідувань
+- офлайн-переклад через ML Kit
+- backend для списку подій
+
+## Чим це зібрано
+
+- Kotlin + Jetpack Compose
+- Hilt, Room, WorkManager
+- MapLibre
+- Retrofit / OkHttp
+- трохи C++ для геометрії та відстаней
+
+## Як зібрати Android
+
+На Linux:
+
+```bash
+./gradlew.sh assembleDebug
+```
+
+На Windows:
+
+```bat
+gradlew.bat assembleDebug
+```
+
+Готовий debug APK після збірки лежить тут:
+
+```text
+app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+```
+
+Для release bundle:
+
+```bash
+./gradlew.sh bundleRelease
+```
+
+Кілька нормальних практичних приміток, без сюрпризів:
+
+- якщо це перший запуск на Linux, `./gradlew.sh` може довго щось качати — це не зависання, він підтягне Android command-line tools, SDK, CMake і NDK
+- за замовчуванням SDK для Linux ставиться в `~/Android/Sdk`
+- якщо треба інший каталог SDK, можна задати `PUTIVNYK_ANDROID_SDK_DIR=/шлях/до/sdk`
+- якщо автодокачування не потрібне, задайте `PUTIVNYK_BOOTSTRAP_ANDROID_SDK=false`
+
+Поточна збірка перевірялась на JDK 21 і Android SDK 35.
+
+## Backend
+
+Backend живе окремо в `backend/`.
+
+Локальний запуск:
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+За замовчуванням він піднімається на `http://localhost:3000`.
+
+## Що варто знати
+
+- у проєкті є dependency verification Gradle, тому нові залежності інколи треба явно підтверджувати в `gradle/verification-metadata.xml`
+- частина маршрутної логіки вміє працювати офлайн, але точність ETA залежить від того, чи вдалося взяти нормальний роут із мережі або локального графа
+- якщо змінюєте нативну геометрію в `app/src/main/cpp`, не забудьте після цього прогнати звичайну Android-збірку, а не тільки unit-тести

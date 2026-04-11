@@ -5,8 +5,17 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import ua.kyiv.putivnyk.data.model.RoutePoint
+import ua.kyiv.putivnyk.data.model.TransportMode
 
 class RouteNavigationMetricsTest {
+
+    @Test
+    fun estimateDurationMinutes_driving_is_faster_than_walking_for_same_distance() {
+        val walkingEta = RouteNavigationMetrics.estimateDurationMinutes(1_000.0, TransportMode.WALKING)
+        val drivingEta = RouteNavigationMetrics.estimateDurationMinutes(1_000.0, TransportMode.DRIVING)
+
+        assertTrue(drivingEta < walkingEta)
+    }
 
     @Test
     fun estimateDurationMinutes_uses_realistic_eta_without_cap() {

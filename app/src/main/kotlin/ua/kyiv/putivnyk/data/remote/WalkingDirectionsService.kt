@@ -77,13 +77,13 @@ class WalkingDirectionsService @Inject constructor(
                     raw.copy(geometry = collapsed)
                 } else {
                     Log.w(TAG, "OSRM returned null, trying offline GraphHopper")
-                    offlineRoutingService.route(waypoints)
+                    offlineRoutingService.route(waypoints, transportMode)
                         ?: straightLineFallback(waypoints)
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "OSRM failed (${e.message}), trying offline GraphHopper")
                 try {
-                    offlineRoutingService.route(waypoints)
+                    offlineRoutingService.route(waypoints, transportMode)
                         ?: straightLineFallback(waypoints)
                 } catch (offlineError: Exception) {
                     Log.e(TAG, "Offline routing also failed", offlineError)

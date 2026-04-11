@@ -10,6 +10,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ua.kyiv.putivnyk.data.model.RoutePoint
+import ua.kyiv.putivnyk.data.model.TransportMode
 import ua.kyiv.putivnyk.data.remote.WalkingDirectionsService.WalkingRouteResult
 import java.io.File
 import java.util.zip.ZipInputStream
@@ -24,15 +25,24 @@ class OfflineRoutingService @Inject constructor(
         private const val TAG = "OfflineRouting"
         private const val GHZ_ASSET = "routing/kyiv-gh.ghz"
         private const val GRAPH_DIR_NAME = "graphhopper-kyiv"
+
+        internal fun profileFor(transportMode: TransportMode): String = when (transportMode) {
+            TransportMode.WALKING -> "foot"
+            TransportMode.DRIVING -> "car"
+        }
     }
 
     private val mutex = Mutex()
     private var hopper: GraphHopper? = null
     private var initFailed = false
 
-    suspend fun route(waypoints: List<RoutePoint>): WalkingRouteResult? {
+    suspend fun route(
+        waypoints: List<RoutePoint>,
+        transportMode: TransportMode = TransportMode.WALKING
+    ): WalkingRouteResult? {
         if (waypoints.size < 2) return null
         val gh = getHopper() ?: return null
+        val profile = profileFor(transportMode)
 
         return withContext(Dispatchers.Default) {
             try {
@@ -48,7 +58,7 @@ class OfflineRoutingService @Inject constructor(
                         from.latitude, from.longitude,
                         to.latitude, to.longitude
                     ).apply {
-                        profile = "foot"
+                        this.profile = profile
                     }
 
                     val rsp = gh.route(req)
@@ -78,7 +88,7 @@ class OfflineRoutingService @Inject constructor(
                     totalDuration += best.time / 1000.0
                 }
 
-                Log.d(TAG, "Offline route: ${allPoints.size} points, ${totalDistance.toInt()} m")
+                Log.d(TAG, "Offline route ($profile): ${allPoints.size} points, ${totalDistance.toInt()} m")
                 WalkingRouteResult(
                     geometry = allPoints,
                     distanceMeters = totalDistance,
