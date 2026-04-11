@@ -113,17 +113,17 @@ struct RoutesView: View {
             route: route,
             texts: texts,
             isActive: viewModel.activeRouteId == route.id,
-            onFavoriteClick: { viewModel.toggleFavorite(route.id) },
+            onFavoriteClick: { viewModel.toggleFavorite(routeId: route.id) },
             onDeleteClick: { routeToDelete = route },
             onActivateClick: {
                 if viewModel.activeRouteId == route.id {
                     viewModel.deactivateRoute()
                 } else {
-                    viewModel.activateRouteOnMap(route.id)
+                    viewModel.activateRouteOnMap(routeId: route.id)
                     onNavigateToMap()
                 }
             },
-            onReverseClick: { viewModel.reverseRoute(route.id) },
+            onReverseClick: { viewModel.reverseRoute(routeId: route.id) },
             onClick: { selectedRouteDetails = route }
         )
         .listRowSeparator(.hidden)
@@ -244,12 +244,12 @@ private struct RouteDetailsSheet: View {
         Section {
             if waypointsList.count >= 2 {
                 Button(tr("routes.optimize", fallback: "⚡ Оптимізувати порядок", texts: texts)) {
-                    viewModel.optimizeRoute(route.id)
+                    viewModel.optimizeRoute(routeId: route.id)
                     dismiss()
                 }
             }
             Button(tr("routes.show_on_map", fallback: "🗺️ Показати на карті", texts: texts)) {
-                viewModel.activateRouteOnMap(route.id)
+                viewModel.activateRouteOnMap(routeId: route.id)
                 dismiss()
                 onNavigateToMap()
             }
