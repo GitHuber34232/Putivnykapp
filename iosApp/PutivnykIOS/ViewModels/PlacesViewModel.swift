@@ -4,6 +4,7 @@ import PutivnykShared
 @MainActor
 final class PlacesViewModel: ObservableObject {
     @Published var places: [Place] = []
+    @Published private(set) var favoritePlaces: [Place] = []
     @Published var searchQuery: String = ""
     @Published var selectedCategory: PlaceCategory? = nil
     @Published var showOnlyFavorites: Bool = false
@@ -12,7 +13,6 @@ final class PlacesViewModel: ObservableObject {
 
     private let services = AppServices.shared
     private var allPlaces: [Place] = []
-    private var favoritePlaces: [Place] = []
 
     init() { Task { await loadPlaces() } }
 
