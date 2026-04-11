@@ -98,6 +98,9 @@ jobs:
         working-directory: iosApp
         run: xcodegen generate
 
+      - name: Stage release shared XCFramework
+        run: CONFIGURATION=Release ./iosApp/scripts/build-shared.sh
+
       - name: Install signing assets
         env:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
@@ -107,12 +110,10 @@ jobs:
           set -euo pipefail
           printf '%s' "$IOS_CERTIFICATE_P12_BASE64" | base64 -D -o "$RUNNER_TEMP/signing_certificate.p12"
           printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 -D -o "$PROFILE_PATH"
-
           security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/provisioning_profile.plist"
           PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/provisioning_profile.plist")
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
-
           security create-keychain -p runner "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p runner "$KEYCHAIN_PATH"
@@ -131,6 +132,7 @@ jobs:
           IOS_BUNDLE_IDENTIFIER: ${{ secrets.IOS_BUNDLE_IDENTIFIER }}
           IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }}
           IOS_PROVISIONING_PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+          PUTIVNYK_SKIP_SHARED_BUILD: '1'
         run: |
           set -euo pipefail
           xcodebuild \

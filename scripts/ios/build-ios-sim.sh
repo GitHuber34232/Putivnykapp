@@ -9,11 +9,12 @@ if ! command -v xcodegen >/dev/null 2>&1; then
 fi
 
 cd "$ROOT_DIR"
-./gradlew :shared:assemblePutivnykSharedDebugXCFramework --no-daemon
+./iosApp/scripts/build-shared.sh
 
 cd "$ROOT_DIR/iosApp"
 xcodegen generate
 
+PUTIVNYK_SKIP_SHARED_BUILD=1 \
 xcodebuild \
   -project PutivnykIOS.xcodeproj \
   -scheme PutivnykIOS \
