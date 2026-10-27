@@ -26,6 +26,7 @@
 # MLKit Translate — keep registrars from being stripped by R8
 -keep class com.google.mlkit.** { *; }
 -keep class com.google.android.gms.internal.mlkit_translate.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_** { *; }
 -dontwarn com.google.mlkit.**
 
 # WorkManager — keep InputMerger and internal classes used via reflection

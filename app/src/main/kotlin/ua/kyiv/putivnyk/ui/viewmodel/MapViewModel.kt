@@ -71,6 +71,8 @@ class MapViewModel @Inject constructor(
         private const val TRANSPORT_REROUTE_COOLDOWN_MS = 3_000L
         private const val TRANSPORT_WAYPOINT_REACH_RADIUS_METERS = 150.0
         private const val SPEED_HISTORY_SIZE = 5
+        private const val AR_MAX_DISTANCE_METERS = 2_000.0
+        private const val AR_MAX_PLACES = 40
     }
 
     private val _selectedPlace = MutableStateFlow<Place?>(null)
@@ -239,6 +241,36 @@ class MapViewModel @Inject constructor(
                 score
             }
         }.also { _isLoaded.value = true }
+    }.flowOn(Dispatchers.Default).stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    /** Nearby places for the AR camera mode, sorted by distance; empty until GPS has a fix. */
+    val arPlaces: StateFlow<List<Place>> = combine(
+        placeRepository.getAllPlaces(),
+        _userLocation,
+        _hasUserLocation
+    ) { allPlaces, userLocation, hasLocation ->
+        if (!hasLocation) return@combine emptyList()
+        allPlaces
+            .asSequence()
+            .distinctBy { it.id }
+            .filter { it.category != PlaceCategory.TOILET }
+            .map { place ->
+                place to NativeGeoEngine.distanceMeters(
+                    userLocation.latitude,
+                    userLocation.longitude,
+                    place.latitude,
+                    place.longitude
+                )
+            }
+            .filter { (_, distance) -> distance <= AR_MAX_DISTANCE_METERS }
+            .sortedBy { (_, distance) -> distance }
+            .take(AR_MAX_PLACES)
+            .map { (place, _) -> place }
+            .toList()
     }.flowOn(Dispatchers.Default).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

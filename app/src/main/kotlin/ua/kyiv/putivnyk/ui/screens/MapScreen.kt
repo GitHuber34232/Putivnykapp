@@ -41,6 +41,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import ua.kyiv.putivnyk.ui.ar.ArExploreScreen
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -122,6 +126,7 @@ fun MapScreen(
     var routeName by remember { mutableStateOf("") }
     var showRouteNameDialog by remember { mutableStateOf(false) }
     var useOfflineFallback by remember { mutableStateOf(false) }
+    var showArMode by rememberSaveable { mutableStateOf(false) }
     val selectedRoutePoints = remember { mutableStateListOf<Place>() }
     val translatedMapTitles = places.associate { place ->
         place.id to trDynamic(place.name)
@@ -666,19 +671,33 @@ fun MapScreen(
             }
             }
 
-            FloatingActionButton(
-                onClick = { viewModel.centerOnUserLocation() },
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(
                         end = 16.dp,
                         bottom = with(density) { bottomPanelHeightPx.toDp() } + 16.dp
-                    )
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Filled.MyLocation,
-                    contentDescription = tr("map.center_kyiv", "Центрувати на Києві")
-                )
+                SmallFloatingActionButton(
+                    onClick = { showArMode = true },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CameraAlt,
+                        contentDescription = tr("map.ar_mode", "AR-камера")
+                    )
+                }
+                FloatingActionButton(
+                    onClick = { viewModel.centerOnUserLocation() }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.MyLocation,
+                        contentDescription = tr("map.center_kyiv", "Центрувати на Києві")
+                    )
+                }
             }
 
             if (isCreatingRoute) {
@@ -700,6 +719,34 @@ fun MapScreen(
                     }
                 }
             }
+    }
+
+    if (showArMode) {
+        val arPlaces by viewModel.arPlaces.collectAsState()
+        Dialog(
+            onDismissRequest = { showArMode = false },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            ArExploreScreen(
+                places = arPlaces,
+                hasUserLocation = hasUserLocation,
+                userLatitude = userLocation.latitude,
+                userLongitude = userLocation.longitude,
+                onClose = { showArMode = false },
+                onOpenDetails = { place ->
+                    showArMode = false
+                    onOpenPlaceDetails(place.id)
+                },
+                onRouteTo = { place ->
+                    showArMode = false
+                    viewModel.selectPlace(place)
+                    viewModel.createRouteToPlace(place)
+                }
+            )
+        }
     }
 
     if (pendingAddPlace != null) {
