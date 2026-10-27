@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import ua.kyiv.putivnyk.data.model.MapPreferenceKeys
 import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.PlaceCategory
 import ua.kyiv.putivnyk.data.repository.PlaceRepository
@@ -117,10 +118,11 @@ class HomeViewModel @Inject constructor(
 
     fun requestOpenMapForPlace(place: Place) {
         viewModelScope.launch {
-            userPreferenceRepository.upsert("map.focus.placeId", place.id.toString())
-            userPreferenceRepository.deleteByKey("map.focus.lat")
-            userPreferenceRepository.deleteByKey("map.focus.lon")
-            userPreferenceRepository.deleteByKey("map.focus.zoom")
+            // Stale coordinates go first: the map reacts to each write and must not apply them too.
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_LAT)
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_LON)
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_ZOOM)
+            userPreferenceRepository.upsert(MapPreferenceKeys.FOCUS_PLACE_ID, place.id.toString())
         }
     }
 

@@ -1,4 +1,5 @@
 const cheerio = require("cheerio");
+const { kyivIso, kyivToday } = require("./utils");
 
 const VENUE = {
   name: "Молодий театр",
@@ -46,7 +47,8 @@ async function scrapeDayPage(date) {
 
       const descParts = [genre, author ? `Автор: ${author}` : "", director ? `Режисер: ${director}` : "", scene, age].filter(Boolean);
 
-      const startsAt = `${date}T${time}:00+02:00`;
+      const [yyyy, mm, dd] = date.split("-");
+      const startsAt = kyivIso(yyyy, mm, dd, time);
       const ticketUrl = ticketHref
         ? `https://molodyytheatre.com${ticketHref}`
         : `https://molodyytheatre.com${href}`;
@@ -87,7 +89,7 @@ async function scrape() {
 
     const days = buildDaysWithShows($);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = kyivToday();
     const futureDays = days.filter((d) => d >= today).slice(0, 14);
 
     const results = await Promise.allSettled(

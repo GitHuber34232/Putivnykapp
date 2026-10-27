@@ -25,8 +25,8 @@ android_cmdline_tools_archive="$HOME/.cache/putivnyk/commandlinetools-linux-${an
 
 declare -a required_android_sdk_packages=(
     "platform-tools"
-    "platforms;android-35"
-    "build-tools;35.0.1"
+    "platforms;android-37"
+    "build-tools;36.0.0"
     "cmake;3.22.1"
     "ndk;28.2.13676358"
 )
@@ -186,8 +186,8 @@ android_sdk_packages_ready() {
     local sdk_dir="$1"
 
     [[ -d "$sdk_dir/platform-tools" ]] &&
-        [[ -d "$sdk_dir/platforms/android-35" ]] &&
-        [[ -d "$sdk_dir/build-tools/35.0.1" ]] &&
+        [[ -d "$sdk_dir/platforms/android-37" ]] &&
+        [[ -d "$sdk_dir/build-tools/36.0.0" ]] &&
         [[ -d "$sdk_dir/cmake/3.22.1" ]] &&
         [[ -d "$sdk_dir/ndk/28.2.13676358" ]]
 }

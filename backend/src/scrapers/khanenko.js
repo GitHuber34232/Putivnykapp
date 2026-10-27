@@ -1,5 +1,5 @@
 const cheerio = require("cheerio");
-const { MONTHS_UK } = require("./utils");
+const { MONTHS_UK, kyivIso, inferEventYear } = require("./utils");
 
 const VENUE = {
   name: "Музей Ханенків",
@@ -46,13 +46,13 @@ async function scrape() {
           const mm = MONTHS_UK[singleDate[2].toLowerCase()];
           const yyyy = dateText.match(/(\d{4})/)
             ? dateText.match(/(\d{4})/)[1]
-            : new Date().getFullYear();
+            : inferEventYear(mm, dd);
           const time = timeMatch ? timeMatch[1] : "10:30";
-          startsAt = `${yyyy}-${mm}-${dd}T${time.padStart(5, "0")}:00+02:00`;
+          startsAt = kyivIso(yyyy, mm, dd, time);
 
           const endTimeMatch = dateText.match(/[–\-]\s*(\d{1,2}:\d{2})/);
           if (endTimeMatch) {
-            endsAt = `${yyyy}-${mm}-${dd}T${endTimeMatch[1].padStart(5, "0")}:00+02:00`;
+            endsAt = kyivIso(yyyy, mm, dd, endTimeMatch[1]);
           }
         }
 

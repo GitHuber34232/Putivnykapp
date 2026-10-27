@@ -43,6 +43,47 @@ class RouteMappingTest {
     }
 
     @Test
+    fun route_toEntity_and_back_preserves_point_names() {
+        val route = Route(
+            name = "Named",
+            startPoint = RoutePoint(50.4501, 30.5234, "Майдан"),
+            endPoint = RoutePoint(50.4540, 30.5160, "Софія"),
+            waypoints = listOf(
+                RoutePoint(50.4510, 30.5220, "Хрещатик"),
+                RoutePoint(50.4520, 30.5200, null)
+            ),
+            distance = 100.0,
+            estimatedDuration = 2
+        )
+
+        val mappedBack = route.toEntity().toDomain()
+
+        assertEquals("Майдан", mappedBack.startPoint.name)
+        assertEquals("Софія", mappedBack.endPoint.name)
+        assertEquals(listOf("Хрещатик", null), mappedBack.waypoints.map { it.name })
+        assertEquals(route.waypoints, mappedBack.waypoints)
+    }
+
+    @Test
+    fun toDomain_handles_rows_without_point_names() {
+        val route = Route(
+            name = "Legacy",
+            startPoint = RoutePoint(1.0, 2.0),
+            endPoint = RoutePoint(3.0, 4.0),
+            waypoints = listOf(RoutePoint(5.0, 6.0)),
+            distance = 0.0,
+            estimatedDuration = 0
+        )
+
+        val legacyEntity = route.toEntity().copy(startName = null, endName = null, waypointNames = emptyList())
+        val mapped = legacyEntity.toDomain()
+
+        assertEquals(1, mapped.waypoints.size)
+        assertEquals(null, mapped.waypoints.first().name)
+        assertEquals(null, mapped.startPoint.name)
+    }
+
+    @Test
     fun toDomain_ignores_unpaired_waypoint_tail() {
         val route = Route(
             name = "x",

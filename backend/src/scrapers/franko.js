@@ -1,5 +1,5 @@
 const cheerio = require("cheerio");
-const { parseMonthUk } = require("./utils");
+const { parseMonthUk, kyivIso, inferEventYear } = require("./utils");
 
 const VENUE = {
   name: "Театр імені Івана Франка",
@@ -32,9 +32,6 @@ async function scrape() {
       }
     });
 
-    const now = new Date();
-    const year = now.getFullYear();
-
     for (const link of links) {
       try {
         const raw = link.text;
@@ -47,7 +44,11 @@ async function scrape() {
 
         const titleParts = raw.split(dateMatch[0]);
         let title = (titleParts[0] || "").trim();
-        title = title.replace(/^(ПН|ВТ|СР|ЧТ|ПТ|СБ|НД),?\s*/i, "").trim();
+        // The weekday sits next to the date ("КАЙДАШЕВА СІМ'Я ПТ, 9 СІЧНЯ"), on either side of the title.
+        title = title
+          .replace(/^(ПН|ВТ|СР|ЧТ|ПТ|СБ|НД),?\s*/i, "")
+          .replace(/(?:^|\s+)(ПН|ВТ|СР|ЧТ|ПТ|СБ|НД),?$/i, "")
+          .trim();
         if (!title) {
           const upper = raw.match(/^[А-ЯІЇЄҐ\s''\-–()]+/u);
           title = upper ? upper[0].trim() : raw.slice(0, 60);
@@ -65,13 +66,10 @@ async function scrape() {
         const durationMatch = raw.match(/(\d+)\s*хвилин/);
         const durationMin = durationMatch ? parseInt(durationMatch[1]) : null;
 
-        const startsAt = `${year}-${mm}-${dd}T${time}:00+02:00`;
-        let endsAt = null;
-        if (durationMin) {
-          const start = new Date(startsAt);
-          start.setMinutes(start.getMinutes() + durationMin);
-          endsAt = start.toISOString().replace("Z", "+02:00");
-        }
+        const year = inferEventYear(mm, dd);
+        const startsAt = kyivIso(year, mm, dd, time);
+        // Computed on the Kyiv wall clock; relabelling a UTC string as +02:00 shifted it by hours.
+        const endsAt = durationMin ? kyivIso(year, mm, dd, time, durationMin) : null;
 
         events.push({
           id: `franko-${mm}${dd}-${events.length}`,

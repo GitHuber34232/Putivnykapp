@@ -4,15 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import ua.kyiv.putivnyk.data.model.MapPreferenceKeys
 import ua.kyiv.putivnyk.data.model.SyncStatus
 import ua.kyiv.putivnyk.data.model.RoutePoint
 import ua.kyiv.putivnyk.data.remote.events.EventsBackendRepository
@@ -21,9 +26,10 @@ import ua.kyiv.putivnyk.data.repository.RouteRepository
 import ua.kyiv.putivnyk.data.repository.SyncStateRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteMetricsCalculator
-import java.util.Locale
 import ua.kyiv.putivnyk.sync.EventsSyncWorker
 import ua.kyiv.putivnyk.sync.SyncScheduler
+import ua.kyiv.putivnyk.ui.utils.EventTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -43,11 +49,15 @@ class EventsViewModel @Inject constructor(
         CATEGORY
     }
 
-    private val syncEntity = "events_backend"
+    private val syncEntity = EventsSyncWorker.SYNC_ENTITY
     private val staleThresholdMs = 24 * 60 * 60 * 1000L
 
-    private val _isLoading = MutableStateFlow(false)
+    // True from the start: init loads right away, so the screen never flashes the empty state.
+    private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _loadFailed = MutableStateFlow(false)
+    val loadFailed: StateFlow<Boolean> = _loadFailed.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -61,6 +71,11 @@ class EventsViewModel @Inject constructor(
     private val _events = MutableStateFlow<List<EventItem>>(emptyList())
     private val _selectedEvent = MutableStateFlow<EventItem?>(null)
     val selectedEvent: StateFlow<EventItem?> = _selectedEvent.asStateFlow()
+
+    private val _snackbarEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val snackbarEvent: SharedFlow<String> = _snackbarEvent.asSharedFlow()
+
+    private var refreshJob: Job? = null
 
     val availableCategories: StateFlow<List<String>> = _events
         .map { list ->
@@ -109,7 +124,8 @@ class EventsViewModel @Inject constructor(
     val isDataStale: StateFlow<Boolean> = syncStateRepository.observeAll()
         .map { states ->
             val current = states.firstOrNull { it.entityName == syncEntity }
-            current == null || current.lastSyncAt == 0L || (System.currentTimeMillis() - current.lastSyncAt > staleThresholdMs)
+            current != null && current.lastSyncAt != 0L &&
+                System.currentTimeMillis() - current.lastSyncAt > staleThresholdMs
         }
         .stateIn(
             scope = viewModelScope,
@@ -124,12 +140,13 @@ class EventsViewModel @Inject constructor(
         _sortMode
     ) { list, query, selectedCategory, sortMode ->
         var filtered = list
-        if (query.isNotBlank()) {
+        val normalizedQuery = query.trim()
+        if (normalizedQuery.isNotBlank()) {
             filtered = filtered.filter { item ->
-            item.title.contains(query, ignoreCase = true) ||
-                item.description.contains(query, ignoreCase = true) ||
-                item.category.contains(query, ignoreCase = true) ||
-                item.locationName.contains(query, ignoreCase = true)
+                item.title.contains(normalizedQuery, ignoreCase = true) ||
+                    item.description.contains(normalizedQuery, ignoreCase = true) ||
+                    item.category.contains(normalizedQuery, ignoreCase = true) ||
+                    item.locationName.contains(normalizedQuery, ignoreCase = true)
             }
         }
 
@@ -138,7 +155,7 @@ class EventsViewModel @Inject constructor(
         }
 
         when (sortMode) {
-            EventSortMode.DATE -> filtered.sortedByDescending { it.startsAt }
+            EventSortMode.DATE -> sortUpcomingFirst(filtered)
             EventSortMode.TITLE -> filtered.sortedBy { it.title.lowercase() }
             EventSortMode.CATEGORY -> filtered.sortedBy { it.category.lowercase() }
         }
@@ -149,7 +166,13 @@ class EventsViewModel @Inject constructor(
     )
 
     init {
-        refresh()
+        viewModelScope.launch {
+            val cached = eventsRepository.cachedEvents(resolvePreferredLanguage())
+            if (cached != null && _events.value.isEmpty()) {
+                _events.value = cached.items
+            }
+            refresh()
+        }
     }
 
     fun updateSearchQuery(value: String) {
@@ -165,18 +188,24 @@ class EventsViewModel @Inject constructor(
     }
 
     fun refresh() {
-        viewModelScope.launch {
+        if (refreshJob?.isActive == true) return
+        refreshJob = viewModelScope.launch {
             _isLoading.value = true
             syncStateRepository.setRunning(syncEntity)
-            val preferredLanguage = resolvePreferredLanguage()
-            val result = runCatching { eventsRepository.getEvents(preferredLanguage) }
-            result.onSuccess { list ->
+            try {
+                val list = eventsRepository.refreshEvents(resolvePreferredLanguage())
                 _events.value = list
+                _loadFailed.value = false
                 syncStateRepository.setSuccess(syncEntity)
-            }.onFailure { throwable ->
-                syncStateRepository.setError(syncEntity, throwable.message)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Keep showing the cached list; the screen offers a retry.
+                _loadFailed.value = true
+                syncStateRepository.setError(syncEntity, e.message)
+            } finally {
+                _isLoading.value = false
             }
-            _isLoading.value = false
         }
     }
 
@@ -193,22 +222,24 @@ class EventsViewModel @Inject constructor(
 
     fun retrySyncInBackground() {
         SyncScheduler.scheduleEventsRetry(workManager)
+        refresh()
     }
 
     fun selectEvent(event: EventItem?) {
         _selectedEvent.value = event
     }
 
-    fun openSelectedEventOnMap() {
+    fun openSelectedEventOnMap(onReady: () -> Unit) {
         val event = _selectedEvent.value ?: return
         val lat = event.latitude ?: return
         val lon = event.longitude ?: return
 
         viewModelScope.launch {
-            userPreferenceRepository.upsert("map.focus.lat", lat.toString())
-            userPreferenceRepository.upsert("map.focus.lon", lon.toString())
-            userPreferenceRepository.upsert("map.focus.zoom", "15")
-            userPreferenceRepository.deleteByKey("map.focus.placeId")
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_PLACE_ID)
+            userPreferenceRepository.upsert(MapPreferenceKeys.FOCUS_ZOOM, "16")
+            userPreferenceRepository.upsert(MapPreferenceKeys.FOCUS_LON, lon.toString())
+            userPreferenceRepository.upsert(MapPreferenceKeys.FOCUS_LAT, lat.toString())
+            onReady()
         }
     }
 
@@ -218,18 +249,41 @@ class EventsViewModel @Inject constructor(
         val lon = event.longitude ?: return
 
         viewModelScope.launch {
-            val routes = routeRepository.getAllRoutes().first()
-            val active = routes.firstOrNull() ?: return@launch
-            routeRepository.updateRoute(
-                RouteMetricsCalculator.withAppendedWaypoint(
-                    route = active,
-                    waypoint = RoutePoint(
-                        latitude = lat,
-                        longitude = lon,
-                        name = event.title
-                    )
+            val activeRouteId = userPreferenceRepository
+                .getString(MapPreferenceKeys.ACTIVE_ROUTE_ID, "")
+                .toLongOrNull()
+            val active = activeRouteId?.let { routeRepository.getRouteById(it) }
+            if (active == null) {
+                _snackbarEvent.tryEmit("no_active_route")
+                return@launch
+            }
+            val updated = RouteMetricsCalculator.withAppendedWaypoint(
+                route = active,
+                waypoint = RoutePoint(
+                    latitude = lat,
+                    longitude = lon,
+                    name = event.title
                 )
             )
+            if (updated == active) {
+                _snackbarEvent.tryEmit("already_in_route")
+                return@launch
+            }
+            routeRepository.updateRoute(updated)
+            _snackbarEvent.tryEmit("added_to_route")
         }
+    }
+
+    private fun sortUpcomingFirst(items: List<EventItem>): List<EventItem> {
+        val now = System.currentTimeMillis()
+        val withTime = items.map { item ->
+            val start = EventTimeFormatter.parseToEpochMillis(item.startsAt)
+            val end = EventTimeFormatter.parseToEpochMillis(item.endsAt) ?: start
+            Triple(item, start, end)
+        }
+        val (finished, current) = withTime.partition { (_, _, end) -> end != null && end < now }
+        val upcoming = current.sortedWith(compareBy(nullsLast()) { (_, start, _) -> start })
+        val past = finished.sortedByDescending { (_, start, _) -> start }
+        return (upcoming + past).map { it.first }
     }
 }

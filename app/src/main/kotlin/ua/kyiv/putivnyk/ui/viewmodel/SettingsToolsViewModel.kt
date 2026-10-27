@@ -33,7 +33,6 @@ class SettingsToolsViewModel @Inject constructor(
     fun exportRoutes(onReady: (String) -> Unit) {
         viewModelScope.launch {
             val json = routeRepository.exportRoutesJson()
-            _transferState.value = "Маршрути підготовлено до експорту"
             telemetry.trackEvent("routes_export_prepared", mapOf("bytes" to json.length.toString()))
             onReady(json)
         }

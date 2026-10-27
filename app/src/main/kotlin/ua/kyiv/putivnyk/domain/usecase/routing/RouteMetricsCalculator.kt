@@ -39,13 +39,8 @@ object RouteMetricsCalculator {
             return route
         }
 
-        val appended = route.waypoints + waypoint
-        val optimized = if (appended.size > 120) {
-            NativeGeoEngine.simplifyPolyline(appended, toleranceMeters = 12.0)
-        } else {
-            appended
-        }
-        return recompute(route.copy(waypoints = optimized))
+        // Waypoints are stops the user picked, not geometry: they are never simplified away.
+        return recompute(route.copy(waypoints = route.waypoints + waypoint))
     }
 
     fun isValidCoordinate(lat: Double, lon: Double): Boolean =

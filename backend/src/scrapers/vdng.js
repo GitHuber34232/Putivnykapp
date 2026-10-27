@@ -1,5 +1,5 @@
 const cheerio = require("cheerio");
-const { MONTHS_UK } = require("./utils");
+const { MONTHS_UK, kyivIso, inferEventYear } = require("./utils");
 
 const VENUE = {
   name: "ВДНГ",
@@ -53,8 +53,8 @@ async function scrape() {
           const dd = dateRangeMatch[1].padStart(2, "0");
           const mm = MONTHS_UK[dateRangeMatch[2].toLowerCase()];
           const time = dateRangeMatch[3];
-          const year = new Date().getFullYear();
-          startsAt = `${year}-${mm}-${dd}T${time}:00+02:00`;
+          const year = inferEventYear(mm, dd);
+          startsAt = kyivIso(year, mm, dd, time);
 
           const endMatch = dateText.match(
             /[–\-]\s*(\d{1,2})\s+(січня|лютого|березня|квітня|травня|червня|липня|серпня|вересня|жовтня|листопада|грудня),?\s*(\d{1,2}:\d{2})/i
@@ -62,7 +62,9 @@ async function scrape() {
           if (endMatch) {
             const edd = endMatch[1].padStart(2, "0");
             const emm = MONTHS_UK[endMatch[2].toLowerCase()];
-            endsAt = `${year}-${emm}-${edd}T${endMatch[3]}:00+02:00`;
+            // An end in an earlier month than the start is in the following year.
+            const endYear = Number(emm) < Number(mm) ? year + 1 : year;
+            endsAt = kyivIso(endYear, emm, edd, endMatch[3]);
           }
         }
 

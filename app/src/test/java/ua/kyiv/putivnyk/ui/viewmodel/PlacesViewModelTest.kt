@@ -3,6 +3,9 @@ package ua.kyiv.putivnyk.ui.viewmodel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -72,11 +75,18 @@ class PlacesViewModelTest {
         return PlacesViewModel(placeRepository, recommendationEngine)
     }
 
+    // [PlacesViewModel.places] only runs while collected (WhileSubscribed), like on screen;
+    // collecting for the whole test also lets the debounced search settle in virtual time.
+    private fun TestScope.collectPlaces(viewModel: PlacesViewModel) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.places.collect {} }
+    }
+
     @Test
     fun isLoaded_becomes_true_after_places_collected() = runTest {
         val viewModel = createViewModel()
+        collectPlaces(viewModel)
         advanceUntilIdle()
-        assertTrue(viewModel.isLoaded.first())
+        assertTrue(viewModel.isLoaded.value)
     }
 
     @Test
@@ -133,10 +143,11 @@ class PlacesViewModelTest {
     @Test
     fun updateSearchQuery_filters_by_name() = runTest {
         val viewModel = createViewModel()
+        collectPlaces(viewModel)
         advanceUntilIdle()
         viewModel.updateSearchQuery("Софій")
         advanceUntilIdle()
-        val places = viewModel.places.first()
+        val places = viewModel.places.value
         assertEquals(1, places.size)
         assertEquals("Софійський собор", places[0].name)
     }
@@ -144,10 +155,11 @@ class PlacesViewModelTest {
     @Test
     fun searchQuery_toilet_includes_toilet_category() = runTest {
         val viewModel = createViewModel()
+        collectPlaces(viewModel)
         advanceUntilIdle()
         viewModel.updateSearchQuery("туалет")
         advanceUntilIdle()
-        val places = viewModel.places.first()
+        val places = viewModel.places.value
         assertTrue(places.any { it.category == PlaceCategory.TOILET })
     }
 

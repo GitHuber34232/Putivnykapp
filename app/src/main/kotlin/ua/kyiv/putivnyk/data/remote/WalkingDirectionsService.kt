@@ -1,8 +1,11 @@
 package ua.kyiv.putivnyk.data.remote
 
+import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.google.gson.JsonObject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -22,6 +25,7 @@ import javax.inject.Singleton
 
 @Singleton
 class WalkingDirectionsService @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     @param:OsrmClient private val client: OkHttpClient,
     private val gson: Gson,
     private val offlineRoutingService: OfflineRoutingService,
@@ -35,7 +39,11 @@ class WalkingDirectionsService @Inject constructor(
 
     companion object {
         private const val TAG = "WalkingDirections"
-        private const val OSRM_BASE = "https://router.project-osrm.org/route/v1"
+        // The OSRM demo server only has the car profile (it ignores "/foot/"), so walking routes
+        // use the FOSSGIS pedestrian instance instead.
+        private const val OSRM_CAR_BASE = "https://router.project-osrm.org/route/v1/driving"
+        private const val OSRM_FOOT_BASE = "https://routing.openstreetmap.de/routed-foot/route/v1/foot"
+        private const val USER_AGENT = "Putivnyk/1.0 (Android; Kyiv city guide)"
         private const val MAX_WAYPOINTS_PER_REQUEST = 25
         private const val BACKTRACK_TOLERANCE_METERS = 25.0
         private const val MIN_MIRROR_LENGTH = 3
@@ -55,13 +63,19 @@ class WalkingDirectionsService @Inject constructor(
         transportMode: TransportMode = TransportMode.WALKING
     ): WalkingRouteResult {
         val profile = when (transportMode) {
-            TransportMode.WALKING -> "foot"
-            TransportMode.DRIVING -> "driving"
+            TransportMode.WALKING -> OSRM_FOOT_BASE
+            TransportMode.DRIVING -> OSRM_CAR_BASE
         }
         Log.d(TAG, "fetchWalkingRoute called with ${waypoints.size} waypoints, profile=$profile")
         if (waypoints.size < 2) return WalkingRouteResult(geometry = waypoints)
 
         return withContext(Dispatchers.IO) {
+            if (!context.isOnlineNow()) {
+                // No point in waiting for network timeouts and retries: route on the device.
+                Log.d(TAG, "Offline, using GraphHopper directly")
+                return@withContext offlineRoutingService.route(waypoints, transportMode)
+                    ?: straightLineFallback(waypoints)
+            }
             try {
 
                 if (waypoints.size > MAX_WAYPOINTS_PER_REQUEST) {
@@ -81,6 +95,7 @@ class WalkingDirectionsService @Inject constructor(
                         ?: straightLineFallback(waypoints)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.w(TAG, "OSRM failed (${e.message}), trying offline GraphHopper")
                 try {
                     offlineRoutingService.route(waypoints, transportMode)
@@ -103,11 +118,11 @@ class WalkingDirectionsService @Inject constructor(
 
     private suspend fun fetchSingleRoute(
         waypoints: List<RoutePoint>,
-        profile: String = "foot"
+        profileBaseUrl: String
     ): WalkingRouteResult? {
 
         val coords = waypoints.joinToString(";") { "${it.longitude},${it.latitude}" }
-        val url = "$OSRM_BASE/$profile/$coords?overview=full&geometries=geojson"
+        val url = "$profileBaseUrl/$coords?overview=full&geometries=geojson"
         Log.d(TAG, "Requesting OSRM: $url")
 
         var lastException: Exception? = null
@@ -117,6 +132,7 @@ class WalkingDirectionsService @Inject constructor(
                 if (result != null) return result
                 Log.w(TAG, "OSRM attempt $attempt/$MAX_RETRIES returned null")
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 lastException = e
                 Log.w(TAG, "OSRM attempt $attempt/$MAX_RETRIES failed: ${e.message}")
             }
@@ -133,20 +149,18 @@ class WalkingDirectionsService @Inject constructor(
     private fun executeOsrmRequest(url: String): WalkingRouteResult? {
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "Putivnyk/1.0")
+            .header("User-Agent", USER_AGENT)
             .get()
             .build()
 
-        val response = client.newCall(request).execute()
-        Log.d(TAG, "OSRM response code: ${response.code}")
-        if (!response.isSuccessful) {
-            Log.w(TAG, "OSRM returned ${response.code}")
-            response.close()
-            return null
+        val body = client.newCall(request).execute().use { response ->
+            Log.d(TAG, "OSRM response code: ${response.code}")
+            if (!response.isSuccessful) {
+                Log.w(TAG, "OSRM returned ${response.code}")
+                return null
+            }
+            response.body?.string()
         }
-
-        val body = response.body?.string()
-        response.close()
         if (body == null) {
             Log.w(TAG, "OSRM response body is null")
             return null
@@ -200,7 +214,7 @@ class WalkingDirectionsService @Inject constructor(
 
     private suspend fun fetchInBatches(
         waypoints: List<RoutePoint>,
-        profile: String = "foot"
+        profile: String
     ): WalkingRouteResult {
         val batchSize = MAX_WAYPOINTS_PER_REQUEST
         val result = mutableListOf<RoutePoint>()

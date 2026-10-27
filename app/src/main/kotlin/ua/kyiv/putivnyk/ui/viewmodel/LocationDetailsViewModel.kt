@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import ua.kyiv.putivnyk.data.model.MapPreferenceKeys
 import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.RoutePoint
 import ua.kyiv.putivnyk.data.repository.LocalizationRepository
@@ -36,7 +37,12 @@ class LocationDetailsViewModel @Inject constructor(
     private val syncStateRepository: SyncStateRepository
 ) : ViewModel() {
 
-    private val placeId: Long = savedStateHandle.get<String>("placeId")?.toLongOrNull() ?: 0L
+    // The nav argument is declared as NavType.LongType, so the handle stores a Long.
+    private val placeId: Long = when (val raw = savedStateHandle.get<Any>("placeId")) {
+        is Number -> raw.toLong()
+        is String -> raw.toLongOrNull() ?: 0L
+        else -> 0L
+    }
 
     private val _place = MutableStateFlow<Place?>(null)
     val place: StateFlow<Place?> = _place.asStateFlow()
@@ -55,6 +61,8 @@ class LocationDetailsViewModel @Inject constructor(
 
     private val _snackbarEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val snackbarEvent: SharedFlow<String> = _snackbarEvent.asSharedFlow()
+
+    private var translationJob: Job? = null
 
     val availableLanguages = SupportedLanguages.majorIso639_1
 
@@ -106,16 +114,18 @@ class LocationDetailsViewModel @Inject constructor(
         val sourceText = currentPlace.description?.takeIf { it.isNotBlank() } ?: return
         val targetLang = _selectedLanguage.value
 
+        translationJob?.cancel()
         if (targetLang == "uk") {
+            _isTranslating.value = false
             _translatedDescription.value = sourceText
             return
         }
 
-        viewModelScope.launch {
+        translationJob = viewModelScope.launch {
             val cacheKey = "place_${currentPlace.id}_description"
             val syncEntity = "translation_$cacheKey"
             val cached = localizationRepository.getValue(cacheKey, targetLang)
-            if (!cached.isNullOrBlank()) {
+            if (!cached.isNullOrBlank() && cached != sourceText) {
                 _translatedDescription.value = cached
                 return@launch
             }
@@ -130,39 +140,56 @@ class LocationDetailsViewModel @Inject constructor(
                 )
             }
 
-            val translated = translatedResult.getOrDefault(sourceText)
-            translatedResult.onSuccess {
+            val translated = translatedResult.getOrNull()
+            if (translated != null && translated.isNotBlank() && translated != sourceText) {
                 syncStateRepository.setSuccess(syncEntity)
-            }.onFailure { throwable ->
-                syncStateRepository.setError(syncEntity, throwable.message)
+                // Only real translations are cached, so a failed (offline) attempt is retried next time.
+                localizationRepository.upsertValue(
+                    key = cacheKey,
+                    locale = targetLang,
+                    value = translated,
+                    source = "mlkit"
+                )
+                _translatedDescription.value = translated
+            } else {
+                syncStateRepository.setError(syncEntity, translatedResult.exceptionOrNull()?.message)
+                _translatedDescription.value = sourceText
+                _snackbarEvent.tryEmit("translation_failed")
             }
-
-            _translatedDescription.value = translated
-            localizationRepository.upsertValue(
-                key = cacheKey,
-                locale = targetLang,
-                value = translated,
-                source = "mlkit"
-            )
             _isTranslating.value = false
         }
     }
 
-    fun openOnMap() {
+    fun openOnMap(onReady: () -> Unit) {
         val current = _place.value ?: return
         viewModelScope.launch {
-            userPreferenceRepository.upsert("map.focus.placeId", current.id.toString())
+            userPreferenceRepository.upsert(MapPreferenceKeys.FOCUS_PLACE_ID, current.id.toString())
+            onReady()
+        }
+    }
+
+    fun requestRouteHere(onReady: () -> Unit) {
+        val current = _place.value ?: return
+        viewModelScope.launch {
+            userPreferenceRepository.upsert(MapPreferenceKeys.PENDING_ROUTE_TO_PLACE_ID, current.id.toString())
+            onReady()
         }
     }
 
     fun addToActiveRoute() {
         val currentPlace = _place.value ?: return
         viewModelScope.launch {
+            val activeRouteId = userPreferenceRepository
+                .getString(MapPreferenceKeys.ACTIVE_ROUTE_ID, "")
+                .toLongOrNull()
+            val active = activeRouteId?.let { routeRepository.getRouteById(it) }
+            if (active == null) {
+                _snackbarEvent.tryEmit("no_active_route")
+                return@launch
+            }
+
             val syncEntity = "route_add_place_${currentPlace.id}"
             syncStateRepository.setRunning(syncEntity)
-            val routes = routeRepository.getAllRoutes().first()
-            val active = routes.firstOrNull() ?: return@launch
-
             val updated = RouteMetricsCalculator.withAppendedWaypoint(
                 route = active,
                 waypoint = RoutePoint(
@@ -171,6 +198,11 @@ class LocationDetailsViewModel @Inject constructor(
                     name = currentPlace.name
                 )
             )
+            if (updated == active) {
+                syncStateRepository.setSuccess(syncEntity)
+                _snackbarEvent.tryEmit("already_in_route")
+                return@launch
+            }
             runCatching {
                 routeRepository.updateRoute(updated)
             }.onSuccess {

@@ -29,12 +29,18 @@ object SyncScheduler {
     }
 
     fun ensurePeriodicOfflineCacheSync(workManager: WorkManager) {
-        val request = PeriodicWorkRequestBuilder<OfflineCacheSyncWorker>(4, TimeUnit.HOURS)
+        val constraints = Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
             .build()
 
+        val request = PeriodicWorkRequestBuilder<OfflineCacheSyncWorker>(12, TimeUnit.HOURS)
+            .setConstraints(constraints)
+            .build()
+
+        // UPDATE so installs that already have the old 4-hour schedule pick up the new one.
         workManager.enqueueUniquePeriodicWork(
             OfflineCacheSyncWorker.WORK_NAME_PERIODIC,
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             request
         )
     }
@@ -57,9 +63,10 @@ object SyncScheduler {
     }
 
     fun ensureTranslationModelSync(workManager: WorkManager) {
-
+        // Translation models are ~30 MB each, so they are prefetched only on unmetered networks.
         val immediateConstraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiredNetworkType(NetworkType.UNMETERED)
+            .setRequiresBatteryNotLow(true)
             .build()
 
         val immediateRequest = OneTimeWorkRequestBuilder<TranslationModelSyncWorker>()
@@ -74,18 +81,20 @@ object SyncScheduler {
         )
 
         val periodicConstraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiredNetworkType(NetworkType.UNMETERED)
+            .setRequiresBatteryNotLow(true)
             .build()
 
         val periodicRequest = PeriodicWorkRequestBuilder<TranslationModelSyncWorker>(
-            12, TimeUnit.HOURS
+            24, TimeUnit.HOURS
         )
             .setConstraints(periodicConstraints)
             .build()
 
+        // UPDATE replaces the schedule of older installs that still had a CONNECTED constraint.
         workManager.enqueueUniquePeriodicWork(
             TranslationModelSyncWorker.WORK_NAME_PERIODIC,
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             periodicRequest
         )
     }

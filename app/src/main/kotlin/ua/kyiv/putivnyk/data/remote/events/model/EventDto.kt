@@ -3,10 +3,11 @@ package ua.kyiv.putivnyk.data.remote.events.model
 import com.google.gson.annotations.SerializedName
 
 data class EventDto(
+    // Nullable because Gson does not enforce Kotlin nullability for network payloads.
     @SerializedName("id")
-    val id: String,
+    val id: String? = null,
     @SerializedName("title")
-    val title: String,
+    val title: String? = null,
     @SerializedName("description")
     val description: String? = null,
     @SerializedName("category")
@@ -73,8 +74,8 @@ private fun translateCategory(raw: String): String =
     categoryTranslations[raw.trim().lowercase()] ?: raw.replaceFirstChar { it.uppercaseChar() }
 
 fun EventDto.toDomain(): EventItem = EventItem(
-    id = id,
-    title = title,
+    id = requireNotNull(id) { "Event without id" },
+    title = requireNotNull(title) { "Event without title" }.trim(),
     description = description.orEmpty(),
     category = translateCategory(category.orEmpty()),
     startsAt = startsAt.orEmpty(),

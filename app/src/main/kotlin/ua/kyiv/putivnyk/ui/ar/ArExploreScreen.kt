@@ -322,7 +322,7 @@ fun ArExploreScreen(
                 )
             }
 
-        if (highlightTarget != null && locked != null) {
+        if (highlightTarget != null) {
             HighlightTitle(
                 title = trDynamic(locked.place.name),
                 rect = animatedRect,

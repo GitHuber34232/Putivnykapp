@@ -10,9 +10,11 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ua.kyiv.putivnyk.data.model.MapPreferenceKeys
 import ua.kyiv.putivnyk.data.model.Route
 import ua.kyiv.putivnyk.data.model.RoutePoint
 import ua.kyiv.putivnyk.data.model.TransportMode
@@ -83,16 +85,17 @@ class RoutesViewModel @Inject constructor(
         _walkingPreview.value = emptyList()
     }
 
-    private val _activeRouteId = MutableStateFlow<Long?>(null)
-    val activeRouteId: StateFlow<Long?> = _activeRouteId
-
-    init {
-
-        viewModelScope.launch {
-            val savedId = userPreferenceRepository.getString("map.activeRouteId", "").toLongOrNull()
-            _activeRouteId.value = savedId
+    /** Follows the stored active route, which the map can also change (e.g. "route here"). */
+    val activeRouteId: StateFlow<Long?> = userPreferenceRepository.observeAsMap()
+        .map { prefs ->
+            prefs[MapPreferenceKeys.PENDING_ACTIVE_ROUTE_ID]?.toLongOrNull()
+                ?: prefs[MapPreferenceKeys.ACTIVE_ROUTE_ID]?.toLongOrNull()
         }
-    }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     private val _availablePlaces = MutableStateFlow<List<Place>>(emptyList())
     val availablePlaces: StateFlow<List<Place>> = _availablePlaces
@@ -261,21 +264,21 @@ class RoutesViewModel @Inject constructor(
                 updatedAt = System.currentTimeMillis()
             )
             routeRepository.updateRoute(reversed)
+            // Progress was counted from the other end.
+            userPreferenceRepository.deleteByKey("route.progress.$routeId")
         }
     }
 
     fun activateRouteOnMap(routeId: Long) {
         viewModelScope.launch {
-            userPreferenceRepository.upsert("map.pending.activeRouteId", routeId.toString())
-            _activeRouteId.value = routeId
+            userPreferenceRepository.upsert(MapPreferenceKeys.PENDING_ACTIVE_ROUTE_ID, routeId.toString())
         }
     }
 
     fun deactivateRoute() {
         viewModelScope.launch {
-            userPreferenceRepository.deleteByKey("map.activeRouteId")
-            userPreferenceRepository.deleteByKey("map.pending.activeRouteId")
-            _activeRouteId.value = null
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.PENDING_ACTIVE_ROUTE_ID)
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.ACTIVE_ROUTE_ID)
         }
     }
 

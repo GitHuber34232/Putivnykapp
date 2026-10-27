@@ -8,8 +8,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.map
@@ -19,6 +27,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ua.kyiv.putivnyk.data.model.MapBookmark
+import ua.kyiv.putivnyk.data.model.MapPreferenceKeys
 import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.PlaceCategory
 import ua.kyiv.putivnyk.data.model.PlaceSortMode
@@ -72,6 +81,7 @@ class MapViewModel @Inject constructor(
         private const val TRANSPORT_WAYPOINT_REACH_RADIUS_METERS = 150.0
         private const val SPEED_HISTORY_SIZE = 5
         private const val AR_MAX_DISTANCE_METERS = 2_000.0
+        private const val LOCATION_WAIT_FOR_ROUTE_MS = 20_000L
         private const val AR_MAX_PLACES = 40
     }
 
@@ -163,6 +173,21 @@ class MapViewModel @Inject constructor(
     private val _promptedPoiIds = mutableSetOf<Long>()
 
     private var progressUpdateJob: Job? = null
+
+    private val pendingRequestsMutex = Mutex()
+    private var pendingRouteToPlaceJob: Job? = null
+
+    /** One-off messages for the map screen, e.g. "location_unavailable". */
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
+
+    // Kept warm for navigation-time lookups (POI prompts) instead of a DB snapshot per GPS fix.
+    private val allPlacesCache: StateFlow<List<Place>> = placeRepository.getAllPlaces()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
 
     val bookmarks: StateFlow<List<MapBookmark>> = mapBookmarkRepository.observeAll()
         .stateIn(
@@ -343,7 +368,7 @@ class MapViewModel @Inject constructor(
         restoreMapState()
 
         viewModelScope.launch {
-            val savedRouteId = userPreferenceRepository.getString("map.activeRouteId", "").toLongOrNull()
+            val savedRouteId = userPreferenceRepository.getString(MapPreferenceKeys.ACTIVE_ROUTE_ID, "").toLongOrNull()
             if (savedRouteId != null) {
                 val route = routeRepository.getRouteById(savedRouteId)
                 _activeRoute.value = route
@@ -369,7 +394,8 @@ class MapViewModel @Inject constructor(
                     val newWp = buildList {
                         add(updated.startPoint); addAll(updated.waypoints); add(updated.endPoint)
                     }
-                    if (oldWp != newWp) {
+                    // Names or metrics changing must not trigger another routing request.
+                    if (!sameWaypointCoordinates(oldWp, newWp)) {
                         fetchWalkingDirectionsForRoute(updated)
                     }
                 } else if (updated == null) {
@@ -382,13 +408,38 @@ class MapViewModel @Inject constructor(
             }
         }
 
+        // Other screens write a pending key and navigate here right away, so the keys are observed
+        // instead of read once; whichever comes first, the request is never lost.
         viewModelScope.launch {
-            applyPendingFocusFromPreferences()
+            userPreferenceRepository.observeAsMap()
+                .map { prefs -> MapPreferenceKeys.PENDING_KEYS.mapNotNull { key -> prefs[key]?.let { key to it } } }
+                .distinctUntilChanged()
+                .collect { pending ->
+                    if (pending.isNotEmpty()) applyPendingRequests()
+                }
+        }
+
+        // The Routes tab can stop the active route while this screen is in the back stack.
+        viewModelScope.launch {
+            userPreferenceRepository.observeAsMap()
+                .map { prefs -> prefs[MapPreferenceKeys.ACTIVE_ROUTE_ID] }
+                .distinctUntilChanged()
+                .collect { activeId ->
+                    if (activeId == null && _activeRoute.value != null) {
+                        clearActiveRouteState(resetProgress = false)
+                    }
+                }
         }
     }
 
     fun syncPendingFocus() {
         viewModelScope.launch {
+            applyPendingRequests()
+        }
+    }
+
+    private suspend fun applyPendingRequests() {
+        pendingRequestsMutex.withLock {
             applyPendingActiveRoute()
             applyPendingRouteToPlace()
             applyPendingFocusFromPreferences()
@@ -422,7 +473,7 @@ class MapViewModel @Inject constructor(
                 val savedId = routeRepository.saveRoute(route)
                 val saved = route.copy(id = savedId)
                 _activeRoute.value = saved
-                userPreferenceRepository.upsert("map.activeRouteId", savedId.toString())
+                userPreferenceRepository.upsert(MapPreferenceKeys.ACTIVE_ROUTE_ID, savedId.toString())
                 fetchWalkingDirectionsForRoute(saved)
             } finally {
                 _isCreatingRoute.value = false
@@ -434,13 +485,28 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val route = routeRepository.getRouteById(routeId) ?: return@launch
             _activeRoute.value = route
-            userPreferenceRepository.upsert("map.activeRouteId", routeId.toString())
+            userPreferenceRepository.upsert(MapPreferenceKeys.ACTIVE_ROUTE_ID, routeId.toString())
             restoreRouteProgress(routeId)
             fetchWalkingDirectionsForRoute(route)
         }
     }
 
     fun deactivateRoute() {
+        clearActiveRouteState(resetProgress = false)
+        viewModelScope.launch {
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.ACTIVE_ROUTE_ID)
+        }
+    }
+
+    fun deactivateAndResetProgress() {
+        clearActiveRouteState(resetProgress = true)
+        viewModelScope.launch {
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.ACTIVE_ROUTE_ID)
+        }
+    }
+
+    /** Stops navigation in memory; callers decide whether the stored active route is cleared too. */
+    private fun clearActiveRouteState(resetProgress: Boolean) {
         val routeId = _activeRoute.value?.id
         _activeRoute.value = null
         walkingDirectionsJob?.cancel()
@@ -452,11 +518,10 @@ class MapViewModel @Inject constructor(
         _totalRouteDistanceMeters.value = 0.0
         _totalRouteDurationSeconds = null
         speedHistory.clear()
-        viewModelScope.launch {
-            userPreferenceRepository.deleteByKey("map.activeRouteId")
-        }
-        if (routeId != null) {
-
+        if (routeId == null) return
+        if (resetProgress) {
+            clearRouteProgress(routeId)
+        } else {
             _currentWaypointIndex.value = 0
             _remainingDistance.value = 0.0
             _remainingMinutes.value = 0
@@ -468,36 +533,16 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun deactivateAndResetProgress() {
-        val routeId = _activeRoute.value?.id
-        _activeRoute.value = null
-        walkingDirectionsJob?.cancel()
-        rerouteJob?.cancel()
-        routeProgressJob?.cancel()
-        _isRerouting.value = false
-        _fullWalkingRouteGeometry.value = emptyList()
-        _walkingRouteGeometry.value = emptyList()
-        _totalRouteDistanceMeters.value = 0.0
-        _totalRouteDurationSeconds = null
-        speedHistory.clear()
-        viewModelScope.launch {
-            userPreferenceRepository.deleteByKey("map.activeRouteId")
-        }
-        if (routeId != null) {
-            clearRouteProgress(routeId)
-        }
-    }
-
     private suspend fun applyPendingActiveRoute() {
-        val pendingId = userPreferenceRepository.getString("map.pending.activeRouteId", "").toLongOrNull()
+        val pendingId = userPreferenceRepository.getString(MapPreferenceKeys.PENDING_ACTIVE_ROUTE_ID, "").toLongOrNull()
         if (pendingId != null) {
-            userPreferenceRepository.deleteByKey("map.pending.activeRouteId")
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.PENDING_ACTIVE_ROUTE_ID)
 
             if (_activeRoute.value?.id == pendingId) return
             val route = routeRepository.getRouteById(pendingId)
             if (route != null) {
                 _activeRoute.value = route
-                userPreferenceRepository.upsert("map.activeRouteId", pendingId.toString())
+                userPreferenceRepository.upsert(MapPreferenceKeys.ACTIVE_ROUTE_ID, pendingId.toString())
                 restoreRouteProgress(pendingId)
                 fetchWalkingDirectionsForRoute(route)
             }
@@ -505,20 +550,28 @@ class MapViewModel @Inject constructor(
     }
 
     private suspend fun applyPendingRouteToPlace() {
-        val pendingPlaceId = userPreferenceRepository.getString("map.pending.routeToPlaceId", "").toLongOrNull()
+        val pendingPlaceId = userPreferenceRepository.getString(MapPreferenceKeys.PENDING_ROUTE_TO_PLACE_ID, "").toLongOrNull()
         if (pendingPlaceId != null) {
-            userPreferenceRepository.deleteByKey("map.pending.routeToPlaceId")
-            val place = placeRepository.getPlaceById(pendingPlaceId)
-            if (place != null) {
-                selectPlace(place)
-                createRouteToPlace(place)
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.PENDING_ROUTE_TO_PLACE_ID)
+            val place = placeRepository.getPlaceById(pendingPlaceId) ?: return
+            selectPlace(place)
+            // Right after opening the map the first GPS fix may still be on its way.
+            pendingRouteToPlaceJob?.cancel()
+            pendingRouteToPlaceJob = viewModelScope.launch {
+                val hasFix = _hasUserLocation.value ||
+                    withTimeoutOrNull(LOCATION_WAIT_FOR_ROUTE_MS) { _hasUserLocation.first { it } } == true
+                if (hasFix) {
+                    createRouteToPlace(place)
+                } else {
+                    _messages.tryEmit("location_unavailable")
+                }
             }
         }
     }
 
     fun requestRouteToPlace(placeId: Long) {
         viewModelScope.launch {
-            userPreferenceRepository.upsert("map.pending.routeToPlaceId", placeId.toString())
+            userPreferenceRepository.upsert(MapPreferenceKeys.PENDING_ROUTE_TO_PLACE_ID, placeId.toString())
         }
     }
 
@@ -901,7 +954,7 @@ class MapViewModel @Inject constructor(
         if (_poiPromptPlace.value != null) return
 
         viewModelScope.launch {
-            val allPlaces = placeRepository.getAllPlacesSnapshot()
+            val allPlaces = allPlacesCache.value.ifEmpty { placeRepository.getAllPlacesSnapshot() }
 
             for (i in currentIdx until routePoints.size) {
                 val rp = routePoints[i]
@@ -1293,6 +1346,9 @@ class MapViewModel @Inject constructor(
         routeRepository.updateRoute(updatedRoute)
     }
 
+    private fun sameWaypointCoordinates(first: List<RoutePoint>, second: List<RoutePoint>): Boolean =
+        first.size == second.size && first.zip(second).all { (a, b) -> sameCoordinate(a, b, tolerance = 1e-7) }
+
     private fun sameCoordinate(first: RoutePoint, second: RoutePoint, tolerance: Double = 0.00005): Boolean {
         return abs(first.latitude - second.latitude) <= tolerance &&
             abs(first.longitude - second.longitude) <= tolerance
@@ -1357,27 +1413,32 @@ class MapViewModel @Inject constructor(
     }
 
     private suspend fun applyPendingFocusFromPreferences() {
-        val pendingId = userPreferenceRepository.getString("map.focus.placeId", "").toLongOrNull()
+        val pendingId = userPreferenceRepository.getString(MapPreferenceKeys.FOCUS_PLACE_ID, "").toLongOrNull()
         if (pendingId != null) {
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_PLACE_ID)
             val place = placeRepository.getPlaceById(pendingId)
             if (place != null) {
                 selectPlace(place)
-                userPreferenceRepository.deleteByKey("map.focus.placeId")
+                if (_zoomLevel.value < 15) updateZoomLevel(15)
+                // A place focus wins; leftover coordinates would otherwise move the map later.
+                userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_LAT)
+                userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_LON)
+                userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_ZOOM)
                 return
             }
         }
 
-        val lat = userPreferenceRepository.getString("map.focus.lat", "").toDoubleOrNull()
-        val lon = userPreferenceRepository.getString("map.focus.lon", "").toDoubleOrNull()
-        val zoom = userPreferenceRepository.getString("map.focus.zoom", "").toIntOrNull()
+        val lat = userPreferenceRepository.getString(MapPreferenceKeys.FOCUS_LAT, "").toDoubleOrNull()
+        val lon = userPreferenceRepository.getString(MapPreferenceKeys.FOCUS_LON, "").toDoubleOrNull()
+        val zoom = userPreferenceRepository.getString(MapPreferenceKeys.FOCUS_ZOOM, "").toIntOrNull()
         if (lat != null && lon != null) {
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_LAT)
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_LON)
+            userPreferenceRepository.deleteByKey(MapPreferenceKeys.FOCUS_ZOOM)
             updateMapCenter(lat, lon)
             if (zoom != null) {
                 updateZoomLevel(zoom)
             }
-            userPreferenceRepository.deleteByKey("map.focus.lat")
-            userPreferenceRepository.deleteByKey("map.focus.lon")
-            userPreferenceRepository.deleteByKey("map.focus.zoom")
         }
     }
 }

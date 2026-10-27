@@ -4,6 +4,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -54,12 +57,19 @@ class RoutesViewModelTest {
     private fun createViewModel(): RoutesViewModel {
         whenever(routeRepository.getAllRoutes()).thenReturn(flowOf(listOf(sampleRoute)))
         whenever(routeRepository.getFavoriteRoutes()).thenReturn(flowOf(emptyList()))
+        whenever(userPreferenceRepository.observeAsMap()).thenReturn(flowOf(emptyMap()))
         return RoutesViewModel(routeRepository, routeOptimizer, userPreferenceRepository, placeRepository, walkingDirectionsService)
+    }
+
+    // [RoutesViewModel.routes] only runs while collected (WhileSubscribed), like on screen.
+    private fun TestScope.collectRoutes(viewModel: RoutesViewModel) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.routes.collect {} }
     }
 
     @Test
     fun isLoaded_becomes_true_after_routes_collected() = runTest {
         val viewModel = createViewModel()
+        collectRoutes(viewModel)
         advanceUntilIdle()
 
         assertTrue(viewModel.isLoaded.value)
@@ -68,6 +78,7 @@ class RoutesViewModelTest {
     @Test
     fun routes_returns_all_routes_initially() = runTest {
         val viewModel = createViewModel()
+        collectRoutes(viewModel)
         advanceUntilIdle()
 
         assertEquals(1, viewModel.routes.value.size)
@@ -77,6 +88,7 @@ class RoutesViewModelTest {
     @Test
     fun searchQuery_filters_routes_by_name() = runTest {
         val viewModel = createViewModel()
+        collectRoutes(viewModel)
         advanceUntilIdle()
 
         viewModel.updateSearchQuery("nonexistent")
@@ -88,6 +100,7 @@ class RoutesViewModelTest {
     @Test
     fun searchQuery_matches_route_name() = runTest {
         val viewModel = createViewModel()
+        collectRoutes(viewModel)
         advanceUntilIdle()
 
         viewModel.updateSearchQuery("Test")
@@ -99,6 +112,7 @@ class RoutesViewModelTest {
     @Test
     fun toggleShowOnlyFavorites_filters_non_favorites() = runTest {
         val viewModel = createViewModel()
+        collectRoutes(viewModel)
         advanceUntilIdle()
 
         viewModel.toggleShowOnlyFavorites()

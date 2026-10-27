@@ -11,11 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
-import ua.kyiv.putivnyk.data.local.OfflineTileCacheManager
 import ua.kyiv.putivnyk.data.seed.SeedManager
 import ua.kyiv.putivnyk.sync.SyncScheduler
 import androidx.work.WorkManager
-import ua.kyiv.putivnyk.BuildConfig
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -30,9 +28,6 @@ class PutivnykApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject
     lateinit var workManager: WorkManager
 
-    @Inject
-    lateinit var offlineTileCacheManager: OfflineTileCacheManager
-
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
@@ -45,8 +40,8 @@ class PutivnykApp : Application(), Configuration.Provider, ImageLoaderFactory {
         SyncScheduler.ensurePeriodicEventsSync(workManager)
         SyncScheduler.ensurePeriodicOfflineCacheSync(workManager)
         SyncScheduler.ensureTranslationModelSync(workManager)
-
-        offlineTileCacheManager.ensureCached(BuildConfig.MAPLIBRE_STYLE_URI)
+        // Map tiles are not bulk-prefetched (the OSM tile usage policy discourages bulk downloads);
+        // without a connection the map switches to the bundled offline map (assets/maps/kyiv.map).
     }
 
     override val workManagerConfiguration: Configuration

@@ -13,6 +13,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -52,6 +53,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -69,6 +71,7 @@ import ua.kyiv.putivnyk.ui.i18n.tr
 import ua.kyiv.putivnyk.ui.maps.MapLibreMapView
 import ua.kyiv.putivnyk.ui.maps.OfflineMapView
 import ua.kyiv.putivnyk.ui.utils.RouteUiFormatter
+import ua.kyiv.putivnyk.ui.utils.rememberIsOnline
 import ua.kyiv.putivnyk.ui.viewmodel.MapViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,6 +131,43 @@ fun MapScreen(
     var useOfflineFallback by remember { mutableStateOf(false) }
     var showArMode by rememberSaveable { mutableStateOf(false) }
     val selectedRoutePoints = remember { mutableStateListOf<Place>() }
+
+    // Without internet the online tiles are blank, so the bundled offline map takes over.
+    val isOnline by rememberIsOnline()
+    var offlineByConnectivity by remember { mutableStateOf(false) }
+    LaunchedEffect(isOnline) {
+        if (isOnline) {
+            offlineByConnectivity = false
+        } else {
+            // A short grace period keeps a brief drop from swapping the map back and forth.
+            delay(3_000)
+            offlineByConnectivity = true
+        }
+    }
+    val showOfflineMap = useOfflineFallback || offlineByConnectivity
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val msgLocationUnavailable = tr(
+        "map.location_unavailable",
+        "Не вдалося визначити ваше місцезнаходження. Увімкніть геолокацію і спробуйте ще раз"
+    )
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { key ->
+            val text = when (key) {
+                "location_unavailable" -> msgLocationUnavailable
+                else -> key
+            }
+            snackbarHostState.showSnackbar(text)
+        }
+    }
+
+    BackHandler(enabled = routeBuilderMode) {
+        routeBuilderMode = false
+        selectedRoutePoints.clear()
+    }
+    BackHandler(enabled = !routeBuilderMode && selectedPlace != null) {
+        viewModel.selectPlace(null)
+    }
     val translatedMapTitles = places.associate { place ->
         place.id to trDynamic(place.name)
     }
@@ -229,12 +269,13 @@ fun MapScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-            if (useOfflineFallback) {
+            if (showOfflineMap) {
                 OfflineMapView(
                     modifier = Modifier.fillMaxSize(),
                     center = mapCenter,
                     zoomLevel = zoomLevel,
-                    places = places,
+                    places = if (activeRoute != null) emptyList() else places,
+                    routePoints = routeLinePoints,
                     userLocation = userLocation,
                     showUserLocation = hasUserLocation,
                     onMapMoved = { newCenter, newZoom ->
@@ -344,11 +385,40 @@ fun MapScreen(
                         onValueChange = { viewModel.updateSearchQuery(it) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        shape = RoundedCornerShape(28.dp),
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                    Icon(Icons.Filled.Close, contentDescription = tr("map.clear", "Очистити"))
+                                }
+                            } else {
+                                IconButton(onClick = { viewModel.saveCurrentViewAsBookmark() }) {
+                                    Icon(
+                                        Icons.Filled.BookmarkAdd,
+                                        contentDescription = tr("map.save_position", "Зберегти позицію")
+                                    )
+                                }
+                            }
+                        },
                         placeholder = { Text(tr("map.search", "Пошук на карті")) }
                     )
 
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item {
+                            FilterChip(
+                                selected = showOnlyFavorites,
+                                onClick = { viewModel.toggleShowOnlyFavorites() },
+                                label = { Text(tr("favorites.favorite", "Улюблене")) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (showOnlyFavorites) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        }
                         item {
                             FilterChip(
                                 selected = selectedCategory == null,
@@ -360,7 +430,7 @@ fun MapScreen(
                             FilterChip(
                                 selected = selectedCategory == category,
                                 onClick = { viewModel.selectCategory(category) },
-                                label = { Text(trCategory(category)) }
+                                label = { Text("${category.icon} ${trCategory(category)}") }
                             )
                         }
                     }
@@ -605,46 +675,74 @@ fun MapScreen(
                 }
 
                 if (selectedPlace != null) {
+                    val place = selectedPlace!!
                     ElevatedCard(
+                        onClick = { onOpenPlaceDetails(place.id) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = trDynamic(selectedPlace!!.name),
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "${trCategory(selectedPlace!!.category)} • ${trRiverBank(selectedPlace!!.riverBank)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = selectedPlace!!.description.orEmpty().ifBlank { tr("map.details_hint", "Натисніть на картку нижче для повної інформації") }.let { trDynamic(it) },
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            FilledTonalButton(
-                                onClick = { viewModel.createRouteToPlace(selectedPlace!!) },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = hasUserLocation,
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.NearMe,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
+                        Column(modifier = Modifier.padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = trDynamic(place.name),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${place.category.icon} ${trCategory(place.category)} • ${trRiverBank(place.riverBank)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                IconButton(onClick = { viewModel.selectPlace(null) }) {
+                                    Icon(Icons.Filled.Close, contentDescription = tr("common.close", "Закрити"))
+                                }
+                            }
+                            place.description?.takeIf { it.isNotBlank() }?.let { description ->
                                 Text(
-                                    if (hasUserLocation) tr("map.route_here", "Маршрут сюди")
-                                    else tr("map.route_here_no_gps", "Маршрут сюди (очікування GPS…)")
+                                    text = trDynamic(description),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(end = 10.dp)
                                 )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.padding(end = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { onOpenPlaceDetails(place.id) },
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(tr("ar.details", "Детальніше"), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                FilledTonalButton(
+                                    onClick = { viewModel.createRouteToPlace(place) },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = hasUserLocation,
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.NearMe,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        if (hasUserLocation) tr("map.route_here", "Маршрут сюди")
+                                        else tr("map.waiting_gps_short", "Очікування GPS…"),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     }
@@ -699,6 +797,41 @@ fun MapScreen(
                     )
                 }
             }
+
+            AnimatedVisibility(
+                visible = showOfflineMap,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(
+                        start = 12.dp,
+                        bottom = with(density) { bottomPanelHeightPx.toDp() } + 16.dp
+                    ),
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                    tonalElevation = 3.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Filled.CloudOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(tr("map.offline_map", "Офлайн-карта"), style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = with(density) { bottomPanelHeightPx.toDp() } + 72.dp)
+            )
 
             if (isCreatingRoute) {
                 Box(

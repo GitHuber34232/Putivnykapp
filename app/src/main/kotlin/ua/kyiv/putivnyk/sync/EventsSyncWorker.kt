@@ -30,12 +30,14 @@ class EventsSyncWorker @AssistedInject constructor(
             val manual = userPreferenceRepository.getString("ui.lang.manual", "uk").ifBlank { "uk" }
             val preferred = if (mode == "manual") manual else Locale.getDefault().language.ifBlank { "uk" }
             val language = preferred.lowercase().takeIf { it in supportedEventLanguages } ?: "uk"
-            eventsBackendRepository.getEvents(language)
+            // Refreshes the offline cache that the Events screen shows first.
+            eventsBackendRepository.refreshEvents(language)
             syncStateRepository.setSuccess(entity)
             Result.success()
         }.getOrElse { throwable ->
+            if (throwable is kotlinx.coroutines.CancellationException) throw throwable
             syncStateRepository.setError(entity, throwable.message)
-            Result.retry()
+            if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
         }
     }
 
@@ -43,5 +45,6 @@ class EventsSyncWorker @AssistedInject constructor(
         const val WORK_NAME_PERIODIC = "events_sync_periodic"
         const val WORK_NAME_RETRY = "events_sync_retry"
         const val SYNC_ENTITY = "events_backend"
+        private const val MAX_ATTEMPTS = 3
     }
 }

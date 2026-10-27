@@ -1,5 +1,6 @@
 package ua.kyiv.putivnyk.data.remote.events
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -13,19 +14,25 @@ import javax.inject.Singleton
 @Singleton
 class EventsBackendRepository @Inject constructor(
     private val api: EventsApi,
-    private val telemetry: AppTelemetry
+    private val telemetry: AppTelemetry,
+    private val cache: EventsCache
 ) {
 
     private val supportedBackendLanguages = setOf("uk", "en")
 
-    suspend fun getEvents(language: String = "uk"): List<EventItem> = withContext(Dispatchers.IO) {
+    /**
+     * Fetches fresh events and stores them in the offline cache.
+     * Throws on network or HTTP errors so callers can keep showing cached data.
+     */
+    suspend fun refreshEvents(language: String = "uk"): List<EventItem> = withContext(Dispatchers.IO) {
         val normalizedLanguage = normalizeBackendLanguage(language)
-        val response = runCatching {
+        val response = try {
             api.getEvents(language = normalizedLanguage)
-        }.onFailure {
-            telemetry.trackWarning("events_fetch_failed", it, mapOf("language" to normalizedLanguage))
-        }.getOrElse {
-            return@withContext emptyList()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            telemetry.trackWarning("events_fetch_failed", e, mapOf("language" to normalizedLanguage))
+            throw e
         }
 
         if (!response.isSuccessful) {
@@ -35,13 +42,21 @@ class EventsBackendRepository @Inject constructor(
                 exception,
                 mapOf("language" to normalizedLanguage, "code" to response.code().toString())
             )
-            return@withContext emptyList()
+            throw exception
         }
 
-        val body = response.body().orEmpty()
-        telemetry.trackEvent("events_fetch_completed", mapOf("count" to body.size.toString(), "language" to normalizedLanguage))
-        body.map { it.toDomain() }
+        val items = response.body().orEmpty()
+            // A malformed item must not drop the whole list.
+            .mapNotNull { dto -> runCatching { dto.toDomain() }.getOrNull() }
+            // LazyColumn keys must be unique.
+            .distinctBy { it.id }
+        cache.write(normalizedLanguage, items)
+        telemetry.trackEvent("events_fetch_completed", mapOf("count" to items.size.toString(), "language" to normalizedLanguage))
+        items
     }
+
+    suspend fun cachedEvents(language: String = "uk"): EventsCache.Snapshot? =
+        cache.read(normalizeBackendLanguage(language))
 
     private fun normalizeBackendLanguage(language: String): String {
         val normalized = language.lowercase(Locale.ROOT)

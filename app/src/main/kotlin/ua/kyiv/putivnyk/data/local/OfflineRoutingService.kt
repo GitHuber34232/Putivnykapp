@@ -25,6 +25,7 @@ class OfflineRoutingService @Inject constructor(
         private const val TAG = "OfflineRouting"
         private const val GHZ_ASSET = "routing/kyiv-gh.ghz"
         private const val GRAPH_DIR_NAME = "graphhopper-kyiv"
+        private const val EXTRACTED_MARKER = ".extracted"
 
         internal fun profileFor(transportMode: TransportMode): String = when (transportMode) {
             TransportMode.WALKING -> "foot"
@@ -116,39 +117,71 @@ class OfflineRoutingService @Inject constructor(
             if (initFailed) return null
 
             withContext(Dispatchers.IO) {
+                val graphDir = File(context.filesDir, GRAPH_DIR_NAME)
                 try {
-                    val graphDir = File(context.filesDir, GRAPH_DIR_NAME)
-                    if (!graphDir.exists()) {
-                        Log.d(TAG, "Extracting GHZ from assets...")
-                        extractGhz(graphDir)
+                    loadHopper(graphDir)
+                } catch (first: Exception) {
+                    // A previous extraction may have been interrupted; extract once more from scratch.
+                    Log.w(TAG, "GraphHopper load failed, re-extracting graph", first)
+                    try {
+                        graphDir.deleteRecursively()
+                        loadHopper(graphDir)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "GraphHopper initialization failed", e)
+                        initFailed = true
+                        null
                     }
-
-                    Log.d(TAG, "Initializing GraphHopper from ${graphDir.absolutePath}")
-                    val gh = GraphHopper().apply {
-                        setGraphHopperLocation(graphDir.absolutePath)
-                        setAllowWrites(false)
-                    }
-                    gh.load()
-                    hopper = gh
-                    Log.d(TAG, "GraphHopper initialized successfully")
-                    gh
-                } catch (e: Exception) {
-                    Log.e(TAG, "GraphHopper initialization failed", e)
-                    initFailed = true
-                    null
                 }
             }
         }
     }
 
+    private fun loadHopper(graphDir: File): GraphHopper {
+        val marker = File(graphDir, EXTRACTED_MARKER)
+        val expectedVersion = graphAssetVersion()
+        if (!marker.exists() || marker.readText() != expectedVersion) {
+            Log.d(TAG, "Extracting GHZ from assets...")
+            extractGhz(graphDir)
+            marker.writeText(expectedVersion)
+        }
+
+        Log.d(TAG, "Initializing GraphHopper from ${graphDir.absolutePath}")
+        val gh = GraphHopper().apply {
+            setGraphHopperLocation(graphDir.absolutePath)
+            setAllowWrites(false)
+        }
+        gh.load()
+        hopper = gh
+        Log.d(TAG, "GraphHopper initialized successfully")
+        return gh
+    }
+
+    /** Changes whenever a new app version ships, so an updated graph asset is re-extracted. */
+    private fun graphAssetVersion(): String {
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        return "${info.longVersionCode}:${info.lastUpdateTime}"
+    }
+
+    /** Extracts into a temporary directory and swaps it in, so a crash never leaves half a graph. */
     private fun extractGhz(targetDir: File) {
+        val tempDir = File(targetDir.parentFile, "${targetDir.name}.tmp")
+        tempDir.deleteRecursively()
+        unzipAsset(tempDir)
+        targetDir.deleteRecursively()
+        if (!tempDir.renameTo(targetDir)) {
+            throw java.io.IOException("Cannot move extracted graph to ${targetDir.absolutePath}")
+        }
+    }
+
+    private fun unzipAsset(targetDir: File) {
         targetDir.mkdirs()
+        val targetRoot = targetDir.canonicalPath + File.separator
         context.assets.open(GHZ_ASSET).use { raw ->
             ZipInputStream(raw).use { zis ->
                 var entry = zis.nextEntry
                 while (entry != null) {
                     val outFile = File(targetDir, entry.name)
-                    if (!outFile.canonicalPath.startsWith(targetDir.canonicalPath)) {
+                    if (!outFile.canonicalPath.startsWith(targetRoot)) {
                         throw SecurityException("Zip entry outside target dir: ${entry.name}")
                     }
                     if (entry.isDirectory) {

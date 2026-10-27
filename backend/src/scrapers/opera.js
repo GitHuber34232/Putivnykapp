@@ -1,4 +1,5 @@
 const cheerio = require("cheerio");
+const { kyivIso, inferEventYear } = require("./utils");
 
 const VENUE = {
   name: "Національна опера України",
@@ -16,8 +17,6 @@ async function scrape() {
   const html = await res.text();
   const $ = cheerio.load(html);
   const events = [];
-  const now = new Date();
-  const year = now.getFullYear();
 
   $(".views-row").each((i, el) => {
     try {
@@ -38,10 +37,9 @@ async function scrape() {
       const [dd, mm] = day.split("/");
       if (!dd || !mm) return;
 
-      const startsAt = `${year}-${mm}-${dd}T${startTimeRaw || "19:00"}:00+02:00`;
-      const endsAt = endTimeRaw
-        ? `${year}-${mm}-${dd}T${endTimeRaw}:00+02:00`
-        : null;
+      const year = inferEventYear(mm, dd);
+      const startsAt = kyivIso(year, mm, dd, startTimeRaw || "19:00");
+      const endsAt = endTimeRaw ? kyivIso(year, mm, dd, endTimeRaw) : null;
 
       const ticketUrl = item.find(".bay a").attr("href") || `https://opera.com.ua${href}`;
 

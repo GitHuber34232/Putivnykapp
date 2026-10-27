@@ -17,6 +17,10 @@ data class RouteEntity(
     val distance: Double,
     val estimatedDuration: Int,
     val transportMode: String = "walking",
+    val startName: String? = null,
+    val endName: String? = null,
+    /** Names of [waypoints] pairs, in order; "" when a point has no name. */
+    val waypointNames: List<String> = emptyList(),
     val isFavorite: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()

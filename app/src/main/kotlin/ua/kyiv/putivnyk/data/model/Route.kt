@@ -42,6 +42,9 @@ fun Route.toEntity(): RouteEntity {
         distance = distance,
         estimatedDuration = estimatedDuration,
         transportMode = transportMode.key,
+        startName = startPoint.name,
+        endName = endPoint.name,
+        waypointNames = waypoints.map { it.name.orEmpty() },
         isFavorite = isFavorite,
         createdAt = createdAt,
         updatedAt = updatedAt
@@ -50,12 +53,15 @@ fun Route.toEntity(): RouteEntity {
 
 fun RouteEntity.toDomain(): Route {
     val waypointsList = mutableListOf<RoutePoint>()
+    // Rows written before names were stored have no waypointNames; Gson may also hand back null.
+    val names: List<String>? = waypointNames
     var i = 0
     while (i < waypoints.size - 1) {
         waypointsList.add(
             RoutePoint(
                 latitude = waypoints[i],
-                longitude = waypoints[i + 1]
+                longitude = waypoints[i + 1],
+                name = names?.getOrNull(i / 2)?.takeIf { it.isNotBlank() }
             )
         )
         i += 2
@@ -65,8 +71,8 @@ fun RouteEntity.toDomain(): Route {
         id = id,
         name = name,
         description = description,
-        startPoint = RoutePoint(startLat, startLon),
-        endPoint = RoutePoint(endLat, endLon),
+        startPoint = RoutePoint(startLat, startLon, startName?.takeIf { it.isNotBlank() }),
+        endPoint = RoutePoint(endLat, endLon, endName?.takeIf { it.isNotBlank() }),
         waypoints = waypointsList,
         distance = distance,
         estimatedDuration = estimatedDuration,

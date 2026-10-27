@@ -9,12 +9,14 @@
 
 Що вже є в застосунку:
 
-- офлайн-карта
-- збережені маршрути
+- офлайн-карта (без мережі карта сама перемикається на вбудовану)
+- збережені маршрути з навігацією, офлайн-маршрутизація через GraphHopper
 - місця з категоріями, пошуком і фільтрами
 - вибране та історія відвідувань
+- AR-камера: наводиш на пам'ятку — вона підсвічується і з'являється картка з інформацією
+- події з backend, які показуються й офлайн (останній завантажений список)
+- світла/темна тема та кольори шпалер (Material You)
 - офлайн-переклад через ML Kit
-- backend для списку подій
 
 ## Чим це зібрано
 
@@ -58,7 +60,23 @@ app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 - якщо треба інший каталог SDK, можна задати `PUTIVNYK_ANDROID_SDK_DIR=/шлях/до/sdk`
 - якщо автодокачування не потрібне, задайте `PUTIVNYK_BOOTSTRAP_ANDROID_SDK=false`
 
-Поточна збірка перевірялась на JDK 21 і Android SDK 35.
+Проєкт націлений на Android 17: `compileSdk` і `targetSdk` = 37, `minSdk` = 29. Збирається Android Gradle Plugin 9.1.1 на Gradle 9.3.1 і JDK 21. На Linux `./gradlew` сам доставить «Android SDK Platform 37» і build-tools 36.0.0; на Windows поставте Android SDK Platform 37 через SDK Manager в Android Studio.
+
+Перша збірка після оновлення до API 37 (новий AGP, CameraX, ML Kit object detection, core-splashscreen) впаде на dependency verification, бо контрольних сум нових залежностей ще немає в `gradle/verification-metadata.xml`. Один раз виконайте:
+
+```bash
+./gradlew --write-verification-metadata sha256 build
+```
+
+і закомітьте оновлений `gradle/verification-metadata.xml` разом зі схемою Room `app/schemas/ua.kyiv.putivnyk.data.local.PutivnykDatabase/9.json`, яку створить ця ж збірка.
+
+Для release-збірки можна закріпити сертифікат backend подій (certificate pinning):
+
+```bash
+./gradlew bundleRelease -PeventsCertificatePins=sha256/<pin1>,sha256/<pin2>
+```
+
+Без цього параметра з'єднання перевіряється звичайним системним сховищем сертифікатів і Certificate Transparency.
 
 ## Backend
 

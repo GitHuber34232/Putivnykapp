@@ -31,6 +31,8 @@ class UiLocalizationViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val dynamicMemoryCache = ConcurrentHashMap<String, String>()
+    // Keyed by "<language>::<source text>" for synchronous lookups from composition.
+    private val dynamicTextCache = ConcurrentHashMap<String, String>()
     private val uiTextsMemoryCache = ConcurrentHashMap<String, Map<String, String>>()
     private var resolveLanguageJob: Job? = null
     private var uiTranslationJob: Job? = null
@@ -68,7 +70,8 @@ class UiLocalizationViewModel @Inject constructor(
             _manualLanguage.value = manual
             resolveEffectiveLanguageAndLoad()
         }
-        downloadModelsForAllLanguages(autoTriggered = true)
+        // Models are fetched on demand for the language in use; downloading every language
+        // (~30 MB each) is only done when the user explicitly asks for it in Settings.
     }
 
     fun setAutoMode(enabled: Boolean) {
@@ -76,7 +79,7 @@ class UiLocalizationViewModel @Inject constructor(
         resolveLanguageJob?.cancel()
         resolveLanguageJob = viewModelScope.launch {
             userPreferenceRepository.upsert("ui.lang.mode", if (enabled) "auto" else "manual")
-            resolveEffectiveLanguageAndLoad(forceTranslate = true)
+            resolveEffectiveLanguageAndLoad()
         }
     }
 
@@ -87,7 +90,7 @@ class UiLocalizationViewModel @Inject constructor(
             userPreferenceRepository.upsert("ui.lang.manual", isoCode)
             userPreferenceRepository.upsert("ui.lang.mode", "manual")
             _isAutoMode.value = false
-            resolveEffectiveLanguageAndLoad(forceTranslate = true)
+            resolveEffectiveLanguageAndLoad()
         }
     }
 
@@ -99,31 +102,35 @@ class UiLocalizationViewModel @Inject constructor(
     }
 
     fun downloadModelForCurrentLanguage() {
+        if (_isDownloadingModels.value) return
         val lang = _effectiveLanguage.value.lowercase()
-        viewModelScope.launch {
+        if (lang == "uk") {
+            _downloadProgressPercent.value = 100
+            _downloadState.value = "Українська мова не потребує моделі перекладу"
+            return
+        }
+        downloadModelsJob = viewModelScope.launch {
+            _isDownloadingModels.value = true
             _downloadState.value = "Завантаження моделі (${lang.uppercase()})..."
             _downloadProgressPercent.value = 0
-            val sources = listOf("uk", "en")
-                .filter { it != lang }
-                .filter { translationService.isSupportedByMlKit(it) }
-            var successCount = 0
-            sources.forEach { source ->
-                val success = translationService.downloadModel(
-                    sourceLanguageIso = source,
-                    targetLanguageIso = lang
-                )
-                if (success) successCount++
-            }
+            // Place names and descriptions are Ukrainian, so the uk -> lang pair covers the app content.
+            val success = translationService.isSupportedByMlKit(lang) &&
+                translationService.downloadModel(sourceLanguageIso = "uk", targetLanguageIso = lang)
             _downloadProgressPercent.value = 100
-            if (successCount == sources.size && sources.isNotEmpty()) {
-                _downloadState.value = "Модель готова (${lang.uppercase()})"
+            _downloadState.value = if (success) {
+                "Модель готова (${lang.uppercase()})"
             } else {
-                _downloadState.value = "Не вдалося завантажити модель (${lang.uppercase()})"
+                "Не вдалося завантажити модель (${lang.uppercase()})"
+            }
+            _isDownloadingModels.value = false
+            downloadModelsJob = null
+            if (success) {
+                resolveEffectiveLanguageAndLoad()
             }
         }
     }
 
-    fun downloadModelsForAllLanguages(autoTriggered: Boolean = false) {
+    fun downloadModelsForAllLanguages() {
         if (_isDownloadingModels.value) return
 
         val targets = try {
@@ -136,12 +143,11 @@ class UiLocalizationViewModel @Inject constructor(
             return
         }
 
-        val sources = listOf("uk", "en")
-            .filter { runCatching { translationService.isSupportedByMlKit(it) }.getOrDefault(false) }
-
-        val pairs = targets.flatMap { target ->
-            sources.filter { source -> source != target }.map { source -> source to target }
-        }
+        // ML Kit stores one model per language (English is built in), so a single uk -> target
+        // pair per language downloads everything the app needs.
+        val pairs = targets
+            .filter { it != "uk" }
+            .map { target -> "uk" to target }
 
         if (pairs.isEmpty()) {
             _downloadProgressPercent.value = 100
@@ -184,23 +190,18 @@ class UiLocalizationViewModel @Inject constructor(
             }
 
             _downloadProgressPercent.value = 100
-            _downloadState.value = if (autoTriggered) {
-                "Фонове завантаження моделей завершено: $successCount/${pairs.size}"
-            } else {
-                "Моделі завантажено: $successCount/${pairs.size}"
-            }
+            _downloadState.value = "Моделі завантажено: $successCount/${pairs.size}"
             _isDownloadingModels.value = false
             downloadModelsJob = null
 
-            if (autoTriggered) {
-                resolveEffectiveLanguageAndLoad(forceTranslate = true)
-            }
+            resolveEffectiveLanguageAndLoad()
         }
     }
 
     companion object {
         private const val TAG = "UiLocalizationVM"
-        private const val DOWNLOAD_BATCH_SIZE = 8
+        private const val DOWNLOAD_BATCH_SIZE = 4
+        private const val MAX_CONSECUTIVE_TRANSLATION_FAILURES = 3
     }
 
     fun cancelDownloadModels() {
@@ -210,6 +211,9 @@ class UiLocalizationViewModel @Inject constructor(
         _downloadProgressPercent.value = 0
         _downloadState.value = "Завантаження скасовано"
     }
+
+    fun peekDynamicTranslation(text: String): String? =
+        dynamicTextCache["${_effectiveLanguage.value}::${text.trim()}"]
 
     suspend fun translateDynamicText(text: String): String {
         val sourceText = text.trim()
@@ -221,6 +225,7 @@ class UiLocalizationViewModel @Inject constructor(
 
         val key = dynamicTranslationKey(sourceText)
         val memoryKey = "$targetLanguage::$key"
+        val textKey = "$targetLanguage::$sourceText"
 
         dynamicMemoryCache[memoryKey]?.let { return it }
 
@@ -228,14 +233,14 @@ class UiLocalizationViewModel @Inject constructor(
             ?.takeIf { it.isNotBlank() }
             ?.let { cached ->
                 dynamicMemoryCache[memoryKey] = cached
+                dynamicTextCache[textKey] = cached
                 return cached
             }
 
         val translated = translateWithBestSource(
             text = sourceText,
-            targetLanguage = targetLanguage,
-            fallback = text
-        )
+            targetLanguage = targetLanguage
+        ) ?: return text
 
         localizationRepository.upsertValue(
             key = key,
@@ -244,6 +249,7 @@ class UiLocalizationViewModel @Inject constructor(
             source = "mlkit-dynamic"
         )
         dynamicMemoryCache[memoryKey] = translated
+        dynamicTextCache[textKey] = translated
         return translated
     }
 
@@ -261,9 +267,11 @@ class UiLocalizationViewModel @Inject constructor(
         _effectiveLanguage.value = language
 
         val englishSeed = assetUiTranslations.load("en")
+        // English texts are the translation source; keys that exist only in the English asset
+        // are included too, so every string the UI uses gets translated.
         val fallbackBase = UiStringDefaults.defaultsUk.mapValues { (key, fallbackUk) ->
             englishSeed[key] ?: fallbackUk
-        }
+        } + englishSeed.filterKeys { it !in UiStringDefaults.defaultsUk }
 
         if (language == "uk") {
             uiTranslationJob?.cancel()
@@ -283,6 +291,7 @@ class UiLocalizationViewModel @Inject constructor(
         if (forceTranslate) {
             localizationRepository.clearLocale(language)
             dynamicMemoryCache.keys.removeIf { it.startsWith("$language::") }
+            dynamicTextCache.keys.removeIf { it.startsWith("$language::") }
             uiTextsMemoryCache.remove(language)
         }
 
@@ -308,13 +317,14 @@ class UiLocalizationViewModel @Inject constructor(
 
         if (!translationService.isSupportedByMlKit(language)) return
 
-        val missing = UiStringDefaults.defaultsUk
+        val missing = fallbackBase
             .filterKeys { key -> forceTranslate || cached[key].isNullOrBlank() }
 
         if (missing.isEmpty()) return
 
         uiTranslationJob?.cancel()
         uiTranslationJob = viewModelScope.launch {
+            var consecutiveFailures = 0
             missing.forEach { (key, fallback) ->
                 if (languageRequestVersion.get() != requestVersion || _effectiveLanguage.value != language) {
                     return@launch
@@ -323,13 +333,19 @@ class UiLocalizationViewModel @Inject constructor(
                 val sourceText = englishSeed[key] ?: fallbackBase[key] ?: fallback
                 val translated = translateWithBestSource(
                     text = sourceText,
-                    targetLanguage = language,
-                    fallback = sourceText
+                    targetLanguage = language
                 )
 
                 if (languageRequestVersion.get() != requestVersion || _effectiveLanguage.value != language) {
                     return@launch
                 }
+                // Not cached when the model is unavailable (e.g. offline), so it is retried later.
+                if (translated == null) {
+                    consecutiveFailures++
+                    if (consecutiveFailures >= MAX_CONSECUTIVE_TRANSLATION_FAILURES) return@launch
+                    return@forEach
+                }
+                consecutiveFailures = 0
 
                 localizationRepository.upsertValue(
                     key = key,
@@ -347,11 +363,11 @@ class UiLocalizationViewModel @Inject constructor(
         }
     }
 
+    /** Returns the translation, or null when no model could translate the text. */
     private suspend fun translateWithBestSource(
         text: String,
-        targetLanguage: String,
-        fallback: String
-    ): String {
+        targetLanguage: String
+    ): String? {
         val sourceCandidates = if (text.any { it in '\u0400'..'\u04FF' }) {
             listOf("uk", "en")
         } else {
@@ -372,7 +388,7 @@ class UiLocalizationViewModel @Inject constructor(
             }
         }
 
-        return fallback
+        return null
     }
 }
 
@@ -461,20 +477,20 @@ private object UiStringDefaults {
         "routes.remove_last" to "-1 точка",
         "routes.clear_points" to "Очистити точки",
         "settings.title" to "Налаштування",
-        "settings.auto" to "Авто (системна мова)",
-        "settings.manual" to "Ручний вибір",
+        "settings.auto" to "Авто",
+        "settings.manual" to "Вручну",
         "settings.interface_lang" to "Мова інтерфейсу",
-        "settings.download_ml" to "Завантажити модель ML Kit",
+        "settings.download_ml" to "Завантажити модель",
         "settings.version" to "Версія",
         "settings.tech" to "Технології",
         "settings.features" to "Функціонал",
-        "settings.features_list" to "карта, рекомендації, події, маршрути, локалізація",
-        "settings.data_tools" to "Інструменти даних",
-        "settings.export_routes" to "Експорт маршрутів (JSON)",
-        "settings.import_routes" to "Імпорт маршрутів (JSON)",
+        "settings.features_list" to "Карта, рекомендації, події, маршрути, AR-камера, офлайн-режим",
+        "settings.data_tools" to "Маршрути та дані",
+        "settings.export_routes" to "Експорт",
+        "settings.import_routes" to "Імпорт",
         "settings.help_feedback" to "Підтримка та зворотний зв'язок",
-        "settings.send_feedback" to "Надіслати відгук",
-        "settings.reopen_onboarding" to "Показати onboarding знову",
+        "settings.send_feedback" to "Відгук",
+        "settings.reopen_onboarding" to "Знайомство",
         "places.title" to "Цікаві місця",
         "places.search" to "Пошук місць...",
         "places.not_found" to "Місця не знайдено",
@@ -488,8 +504,8 @@ private object UiStringDefaults {
         "details.not_found" to "Локацію не знайдено",
         "details.photo" to "Фото",
         "details.mark_visited" to "Позначити відвіданим",
-        "details.open_map" to "Відкрити на карті",
-        "details.add_active_route" to "Додати до активного маршруту",
+        "details.open_map" to "На карті",
+        "details.add_active_route" to "До маршруту",
         "details.translate_description" to "Переклад опису",
         "details.description" to "Опис",
         "details.no_description" to "Опис відсутній",
@@ -517,8 +533,8 @@ private object UiStringDefaults {
         "sort.popularity" to "Популярність",
         "sort.rating" to "Рейтинг",
         "sort.distance" to "Відстань",
-        "onboarding.title" to "Ласкаво просимо до Putivnyk",
-        "onboarding.continue" to "Продовжити",
+        "onboarding.title" to "Ласкаво просимо до Путівника",
+        "onboarding.continue" to "Почати",
         "common.close" to "Закрити",
         "common.delete" to "Видалити",
         "common.back" to "Назад"

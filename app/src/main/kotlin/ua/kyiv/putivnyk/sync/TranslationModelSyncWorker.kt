@@ -7,53 +7,43 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
 import ua.kyiv.putivnyk.i18n.OnDeviceTranslationService
 import ua.kyiv.putivnyk.i18n.SupportedLanguages
+import java.util.Locale
 
+/**
+ * Prefetches the translation model for the language the app is shown in, so the first
+ * translated screen does not wait for a download. Runs only on unmetered networks.
+ */
 @HiltWorker
 class TranslationModelSyncWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
-    private val translationService: OnDeviceTranslationService
+    private val translationService: OnDeviceTranslationService,
+    private val userPreferenceRepository: UserPreferenceRepository
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
         return try {
-            val targets = SupportedLanguages.majorIso639_1
-                .map { it.isoCode.lowercase() }
-                .filter { runCatching { translationService.isSupportedByMlKit(it) }.getOrDefault(false) }
-                .distinct()
+            val mode = userPreferenceRepository.getString("ui.lang.mode", "auto")
+            val manual = userPreferenceRepository.getString("ui.lang.manual", "uk").ifBlank { "uk" }
+            val preferred = if (mode == "manual") manual else Locale.getDefault().language.ifBlank { "uk" }
+            val language = preferred.lowercase().takeIf { SupportedLanguages.contains(it) } ?: "uk"
 
-            val sources = listOf("uk", "en")
-                .filter { runCatching { translationService.isSupportedByMlKit(it) }.getOrDefault(false) }
-
-            val pairs = targets.flatMap { target ->
-                sources.filter { it != target }.map { source -> source to target }
-            }
-
-            if (pairs.isEmpty()) {
-                Log.d(TAG, "No translation model pairs to download")
+            // Ukrainian content needs no model; every other language needs the uk -> target pair.
+            if (language == "uk" || !translationService.isSupportedByMlKit(language)) {
+                Log.d(TAG, "No translation model needed for '$language'")
                 return Result.success()
             }
 
-            var successCount = 0
-            var failCount = 0
+            val ok = translationService.downloadModel(
+                sourceLanguageIso = "uk",
+                targetLanguageIso = language
+            )
+            Log.d(TAG, "Translation model uk->$language ready: $ok")
 
-            for ((source, target) in pairs) {
-                val ok = translationService.downloadModel(
-                    sourceLanguageIso = source,
-                    targetLanguageIso = target
-                )
-                if (ok) successCount++ else failCount++
-            }
-
-            Log.d(TAG, "Translation models sync done: $successCount OK, $failCount failed out of ${pairs.size}")
-
-            if (failCount > 0 && runAttemptCount < 3) {
-                Result.retry()
-            } else {
-                Result.success()
-            }
+            if (!ok && runAttemptCount < 3) Result.retry() else Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Translation model sync failed", e)
             if (runAttemptCount < 3) Result.retry() else Result.success()

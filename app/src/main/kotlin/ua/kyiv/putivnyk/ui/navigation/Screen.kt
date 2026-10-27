@@ -20,6 +20,8 @@ sealed class Screen(
     data object LocationDetails : Screen("location/{placeId}", "Деталі", Icons.Filled.Info) {
         fun route(placeId: Long): String = "location/$placeId"
     }
+    data object Places : Screen("places", "Цікаві місця", Icons.Filled.Place)
+    data object Favorites : Screen("favorites", "Улюблені", Icons.Filled.Favorite)
 
     companion object {
         val bottomNavItems = listOf(Home, Map, Routes, Events, Settings)

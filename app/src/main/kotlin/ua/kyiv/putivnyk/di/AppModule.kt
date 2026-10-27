@@ -43,9 +43,15 @@ object AppModule {
 
         val builder = OkHttpClient.Builder()
 
-        if (!BuildConfig.DEBUG) {
+        // Pins come from the `eventsCertificatePins` Gradle property. Without real pins the
+        // connection relies on the platform trust store and Certificate Transparency.
+        val pins = BuildConfig.EVENTS_CERTIFICATE_PINS
+            .split(',')
+            .map { it.trim() }
+            .filter { it.startsWith("sha256/") }
+        if (!BuildConfig.DEBUG && pins.isNotEmpty()) {
             val certificatePinner = CertificatePinner.Builder()
-                .add(allowedHost, "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=")
+                .apply { pins.forEach { pin -> add(allowedHost, pin) } }
                 .build()
             builder.certificatePinner(certificatePinner)
         }

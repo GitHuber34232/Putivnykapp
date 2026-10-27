@@ -36,6 +36,7 @@ import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
+import org.maplibre.android.style.layers.PropertyFactory.circleOpacity
 import org.maplibre.android.style.layers.PropertyFactory.circleRadius
 import org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor
 import org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth
@@ -51,7 +52,11 @@ import org.maplibre.android.style.layers.PropertyFactory.lineJoin
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.layers.PropertyFactory.textAllowOverlap
 import org.maplibre.android.style.layers.PropertyFactory.textColor
+import org.maplibre.android.style.layers.PropertyFactory.symbolPlacement
+import org.maplibre.android.style.layers.PropertyFactory.symbolSpacing
 import org.maplibre.android.style.layers.PropertyFactory.textField
+import org.maplibre.android.style.layers.PropertyFactory.textHaloColor
+import org.maplibre.android.style.layers.PropertyFactory.textHaloWidth
 import org.maplibre.android.style.layers.PropertyFactory.textIgnorePlacement
 import org.maplibre.android.style.layers.PropertyFactory.textOffset
 import org.maplibre.android.style.layers.PropertyFactory.textSize
@@ -74,10 +79,7 @@ import ua.kyiv.putivnyk.ui.viewmodel.MapCenter
 import ua.kyiv.putivnyk.ui.viewmodel.MapViewportBounds
 import java.net.URI
 import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 private const val PLACE_SOURCE_ID = "putivnyk-places-source"
 private const val PLACE_LAYER_ID = "putivnyk-places-layer"
@@ -85,12 +87,16 @@ private const val CLUSTER_LAYER_ID = "putivnyk-cluster-layer"
 private const val CLUSTER_COUNT_LAYER_ID = "putivnyk-cluster-count-layer"
 private const val USER_SOURCE_ID = "putivnyk-user-source"
 private const val USER_LAYER_ID = "putivnyk-user-layer"
+private const val USER_HALO_LAYER_ID = "putivnyk-user-halo-layer"
+private const val ROUTE_CASING_LAYER_ID = "putivnyk-route-casing-layer"
+
+// Same brand azure as the Compose theme (ui/theme/Color.kt).
+private const val BRAND_BLUE = "#1F5FAE"
 private const val USER_ARROW_LAYER_ID = "putivnyk-user-arrow-layer"
 private const val USER_ARROW_ICON_ID = "putivnyk-user-arrow-icon"
 private const val PLACE_ICON_ID = "putivnyk-place-icon"
 private const val ROUTE_SOURCE_ID = "putivnyk-route-source"
 private const val ROUTE_LINE_LAYER_ID = "putivnyk-route-line-layer"
-private const val ROUTE_ARROW_SOURCE_ID = "putivnyk-route-arrow-source"
 private const val ROUTE_ARROW_LAYER_ID = "putivnyk-route-arrow-layer"
 private const val ROUTE_ARROW_ICON_ID = "putivnyk-route-arrow-icon"
 private const val ROUTE_ENDPOINTS_SOURCE_ID = "putivnyk-route-endpoints-source"
@@ -530,7 +536,9 @@ private data class MapLibreRuntimeState(
                 CircleLayer(CLUSTER_LAYER_ID, PLACE_SOURCE_ID)
                     .withFilter(has("point_count"))
                     .withProperties(
-                        circleColor("#1A73E8"),
+                        circleColor(BRAND_BLUE),
+                        circleStrokeColor("#FFFFFF"),
+                        circleStrokeWidth(2.5f),
                         circleRadius(
                             Expression.step(
                                 get("point_count"),
@@ -550,8 +558,9 @@ private data class MapLibreRuntimeState(
                     .withFilter(has("point_count"))
                     .withProperties(
                         textField(get("point_count")),
-                        textSize(12f),
-                        textColor("#111111"),
+                        textSize(13f),
+                        // White on the blue cluster circle; dark text was barely readable.
+                        textColor("#FFFFFF"),
                         textAllowOverlap(true),
                         textIgnorePlacement(true)
                     )
@@ -579,7 +588,10 @@ private data class MapLibreRuntimeState(
                     iconIgnorePlacement(true),
                     textField(get("title")),
                     textSize(11f),
-                    textColor("#111111"),
+                    textColor("#1A1C1F"),
+                    // A halo keeps labels readable over the busy raster tiles.
+                    textHaloColor("#FFFFFF"),
+                    textHaloWidth(1.6f),
                     textOffset(arrayOf(0f, 1.1f)),
                     textAllowOverlap(false),
                     textIgnorePlacement(false)
@@ -598,11 +610,23 @@ private data class MapLibreRuntimeState(
             )
         }
 
+        if (style.getLayer(USER_HALO_LAYER_ID) == null) {
+            style.addLayer(
+                CircleLayer(USER_HALO_LAYER_ID, USER_SOURCE_ID).withProperties(
+                    circleColor(BRAND_BLUE),
+                    circleOpacity(0.18f),
+                    circleRadius(20f)
+                )
+            )
+        }
+
         if (style.getLayer(USER_LAYER_ID) == null) {
             style.addLayer(
                 CircleLayer(USER_LAYER_ID, USER_SOURCE_ID).withProperties(
-                    circleColor("#1A73E8"),
-                    circleRadius(8f)
+                    circleColor(BRAND_BLUE),
+                    circleRadius(8f),
+                    circleStrokeColor("#FFFFFF"),
+                    circleStrokeWidth(3f)
                 )
             )
         }
@@ -647,8 +671,6 @@ private data class MapLibreRuntimeState(
         if (routePoints.size < 2) {
             style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID)
                 ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
-            style.getSourceAs<GeoJsonSource>(ROUTE_ARROW_SOURCE_ID)
-                ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
             style.getSourceAs<GeoJsonSource>(ROUTE_ENDPOINTS_SOURCE_ID)
                 ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
             return
@@ -667,20 +689,7 @@ private data class MapLibreRuntimeState(
         )
         style.getSourceAs<GeoJsonSource>(ROUTE_ENDPOINTS_SOURCE_ID)
             ?.setGeoJson(FeatureCollection.fromFeatures(endpointFeatures))
-
-        val arrowFeatures = mutableListOf<Feature>()
-        for (i in 0 until routePoints.size - 1) {
-            val from = routePoints[i]
-            val to = routePoints[i + 1]
-            val midLat = (from.latitude + to.latitude) / 2
-            val midLon = (from.longitude + to.longitude) / 2
-            val bearing = calculateBearing(from.latitude, from.longitude, to.latitude, to.longitude)
-            val feature = Feature.fromGeometry(Point.fromLngLat(midLon, midLat))
-            feature.addProperty("bearing", JsonPrimitive(bearing))
-            arrowFeatures.add(feature)
-        }
-        style.getSourceAs<GeoJsonSource>(ROUTE_ARROW_SOURCE_ID)
-            ?.setGeoJson(FeatureCollection.fromFeatures(arrowFeatures))
+        // Direction arrows are placed along the line by the arrow layer itself.
     }
 
     private fun ensureRouteLayer(context: Context, style: Style) {
@@ -689,41 +698,48 @@ private data class MapLibreRuntimeState(
                 GeoJsonSource(ROUTE_SOURCE_ID, FeatureCollection.fromFeatures(emptyList()))
             )
         }
-        if (style.getSource(ROUTE_ARROW_SOURCE_ID) == null) {
-            style.addSource(
-                GeoJsonSource(ROUTE_ARROW_SOURCE_ID, FeatureCollection.fromFeatures(emptyList()))
-            )
-        }
         if (style.getSource(ROUTE_ENDPOINTS_SOURCE_ID) == null) {
             style.addSource(
                 GeoJsonSource(ROUTE_ENDPOINTS_SOURCE_ID, FeatureCollection.fromFeatures(emptyList()))
             )
         }
 
-        if (style.getLayer(ROUTE_LINE_LAYER_ID) == null) {
-            val lineLayer = LineLayer(ROUTE_LINE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
-                lineColor("#4285F4"),
-                lineWidth(5f),
+        val belowLayer = when {
+            style.getLayer(USER_HALO_LAYER_ID) != null -> USER_HALO_LAYER_ID
+            style.getLayer(USER_LAYER_ID) != null -> USER_LAYER_ID
+            style.getLayer(CLUSTER_LAYER_ID) != null -> CLUSTER_LAYER_ID
+            else -> null
+        }
+
+        if (style.getLayer(ROUTE_CASING_LAYER_ID) == null) {
+            // White casing under the route keeps it visible on any map background.
+            val casingLayer = LineLayer(ROUTE_CASING_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
+                lineColor("#FFFFFF"),
+                lineWidth(10f),
                 lineCap(Property.LINE_CAP_ROUND),
                 lineJoin(Property.LINE_JOIN_ROUND)
             )
-
-            val belowLayer = when {
-                style.getLayer(USER_LAYER_ID) != null -> USER_LAYER_ID
-                style.getLayer(CLUSTER_LAYER_ID) != null -> CLUSTER_LAYER_ID
-                else -> null
-            }
             if (belowLayer != null) {
-                style.addLayerBelow(lineLayer, belowLayer)
+                style.addLayerBelow(casingLayer, belowLayer)
             } else {
-                style.addLayer(lineLayer)
+                style.addLayer(casingLayer)
             }
+        }
+
+        if (style.getLayer(ROUTE_LINE_LAYER_ID) == null) {
+            val lineLayer = LineLayer(ROUTE_LINE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
+                lineColor(BRAND_BLUE),
+                lineWidth(6f),
+                lineCap(Property.LINE_CAP_ROUND),
+                lineJoin(Property.LINE_JOIN_ROUND)
+            )
+            style.addLayerAbove(lineLayer, ROUTE_CASING_LAYER_ID)
         }
 
         if (style.getLayer(ROUTE_ENDPOINTS_LAYER_ID) == null) {
             val endpointsLayer = CircleLayer(ROUTE_ENDPOINTS_LAYER_ID, ROUTE_ENDPOINTS_SOURCE_ID).withProperties(
                 circleRadius(7f),
-                circleColor("#4285F4"),
+                circleColor(BRAND_BLUE),
                 circleStrokeWidth(2.5f),
                 circleStrokeColor("#FFFFFF")
             )
@@ -744,13 +760,16 @@ private data class MapLibreRuntimeState(
         }
 
         if (style.getLayer(ROUTE_ARROW_LAYER_ID) == null) {
+            // Spaced along the route line; the arrow icon points up, so it is turned to follow the line.
             val arrowLayer =
-                SymbolLayer(ROUTE_ARROW_LAYER_ID, ROUTE_ARROW_SOURCE_ID).withProperties(
+                SymbolLayer(ROUTE_ARROW_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
+                    symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
+                    symbolSpacing(80f),
                     iconImage(ROUTE_ARROW_ICON_ID),
-                    iconSize(0.6f),
+                    iconSize(0.55f),
                     iconAllowOverlap(true),
                     iconIgnorePlacement(true),
-                    iconRotate(get("bearing")),
+                    iconRotate(90f),
                     iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP)
                 )
 
@@ -761,15 +780,6 @@ private data class MapLibreRuntimeState(
             }
         }
     }
-}
-
-private fun calculateBearing(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-    val dLon = Math.toRadians(lon2 - lon1)
-    val lat1Rad = Math.toRadians(lat1)
-    val lat2Rad = Math.toRadians(lat2)
-    val y = sin(dLon) * cos(lat2Rad)
-    val x = cos(lat1Rad) * sin(lat2Rad) - sin(lat1Rad) * cos(lat2Rad) * cos(dLon)
-    return (Math.toDegrees(atan2(y, x)) + 360) % 360
 }
 
 private fun org.maplibre.android.maps.MapLibreMap.currentViewportBounds(): MapViewportBounds? {

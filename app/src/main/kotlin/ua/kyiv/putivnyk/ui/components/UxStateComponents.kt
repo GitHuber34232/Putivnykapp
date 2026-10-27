@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,10 +34,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ua.kyiv.putivnyk.ui.i18n.tr
-import ua.kyiv.putivnyk.ui.utils.getAccessibleTextColor
 
 @Composable
 fun LoadingStateView(
@@ -50,7 +51,7 @@ fun LoadingStateView(
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = getAccessibleTextColor(MaterialTheme.colorScheme.surface)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -65,25 +66,37 @@ fun EmptyStateView(
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Column(
+            modifier = Modifier.padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-            )
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = getAccessibleTextColor(MaterialTheme.colorScheme.surface)
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = getAccessibleTextColor(MaterialTheme.colorScheme.surface)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -100,6 +113,7 @@ fun ErrorRetryBanner(
 ) {
     Card(
         modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer
         )
@@ -115,10 +129,10 @@ fun ErrorRetryBanner(
                 text = message,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
-                color = getAccessibleTextColor(MaterialTheme.colorScheme.errorContainer)
+                color = MaterialTheme.colorScheme.onErrorContainer
             )
             TextButton(onClick = onRetry) {
-                Text(tr("common.retry", "Повторити"), color = getAccessibleTextColor(MaterialTheme.colorScheme.errorContainer))
+                Text(tr("common.retry", "Повторити"), color = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
     }

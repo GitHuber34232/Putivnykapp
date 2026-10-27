@@ -7,6 +7,8 @@ import com.google.mlkit.nl.translate.TranslateRemoteModel
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
@@ -73,6 +75,11 @@ class OnDeviceTranslationService @Inject constructor() {
                 translator.downloadModelIfNeededAwait()
             }
             true
+        } catch (_: TimeoutCancellationException) {
+            false
+        } catch (e: CancellationException) {
+            // The caller was cancelled (e.g. "Cancel" in Settings): stop instead of reporting a failure.
+            throw e
         } catch (_: Throwable) {
             false
         }

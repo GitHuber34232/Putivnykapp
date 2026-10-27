@@ -3,7 +3,7 @@ pluginManagement {
     val agpVersion = if (agpChannel == "8") {
         providers.gradleProperty("agp8Version").orElse("8.7.3").get()
     } else {
-        providers.gradleProperty("agp9Version").orElse("9.0.1").get()
+        providers.gradleProperty("agp9Version").orElse("9.1.1").get()
     }
     val kotlinVersion = "2.3.20"
     val hiltVersion = if (agpChannel == "8") {

@@ -68,10 +68,35 @@ class SeedManager @Inject constructor(
     }
 
     suspend fun forceRefresh() = withContext(Dispatchers.IO) {
+        // Reseeding replaces every row, so the user's own data on places is carried over.
+        val userState = placeRepository.getAllPlacesSnapshot()
+            .filter { it.isFavorite || it.isVisited || it.tags.any { tag -> tag.startsWith(FAVORITE_TAG_PREFIX) } }
+
         placeRepository.deleteAllPlaces()
         loadTouristPlaces()
         loadExtraPlaces()
+
+        if (userState.isEmpty()) return@withContext
+        val reseeded = placeRepository.getAllPlacesSnapshot()
+        val byId = reseeded.associateBy { it.id }
+        val byNameAndLocation = reseeded.associateBy { placeIdentity(it) }
+        val restored = userState.mapNotNull { previous ->
+            val target = byId[previous.id]?.takeIf { placeIdentity(it) == placeIdentity(previous) }
+                ?: byNameAndLocation[placeIdentity(previous)]
+                ?: return@mapNotNull null
+            target.copy(
+                isFavorite = previous.isFavorite,
+                isVisited = previous.isVisited,
+                tags = (target.tags + previous.tags.filter { it.startsWith(FAVORITE_TAG_PREFIX) }).distinct()
+            )
+        }
+        if (restored.isNotEmpty()) {
+            placeRepository.savePlaces(restored)
+        }
     }
+
+    private fun placeIdentity(place: Place): String =
+        "${place.name.trim().lowercase()}|${"%.4f".format(java.util.Locale.US, place.latitude)}|${"%.4f".format(java.util.Locale.US, place.longitude)}"
 
     private suspend fun markSeedVersionApplied() {
         userPreferenceRepository.upsert(SEED_VERSION_KEY, CURRENT_SEED_VERSION.toString())
@@ -79,6 +104,7 @@ class SeedManager @Inject constructor(
 
     companion object {
         private const val SEED_VERSION_KEY = "seed.version"
+        private const val FAVORITE_TAG_PREFIX = "fav:"
         private const val CURRENT_SEED_VERSION = 8
     }
 }

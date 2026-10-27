@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,13 +32,15 @@ import ua.kyiv.putivnyk.ui.i18n.UiRuntimeTranslator
 import ua.kyiv.putivnyk.ui.i18n.UiTextProvider
 import ua.kyiv.putivnyk.ui.i18n.tr
 import ua.kyiv.putivnyk.ui.screens.EventsScreen
+import ua.kyiv.putivnyk.ui.screens.FavoritesScreen
 import ua.kyiv.putivnyk.ui.screens.HomeScreen
 import ua.kyiv.putivnyk.ui.screens.LocationDetailsScreen
 import ua.kyiv.putivnyk.ui.screens.MapScreen
+import ua.kyiv.putivnyk.ui.screens.OnboardingDialog
+import ua.kyiv.putivnyk.ui.screens.PlacesScreen
 import ua.kyiv.putivnyk.ui.screens.RoutesScreen
 import ua.kyiv.putivnyk.ui.screens.SettingsScreen
 import ua.kyiv.putivnyk.ui.viewmodel.AppExperienceViewModel
-import ua.kyiv.putivnyk.ui.viewmodel.MapViewModel
 import ua.kyiv.putivnyk.ui.viewmodel.UiLocalizationViewModel
 
 @Composable
@@ -48,14 +51,14 @@ fun PutivnykApp() {
     val owner: ViewModelStoreOwner = activity ?: checkNotNull(LocalViewModelStoreOwner.current)
     val localizationViewModel: UiLocalizationViewModel = hiltViewModel(viewModelStoreOwner = owner)
     val appExperienceViewModel: AppExperienceViewModel = hiltViewModel(viewModelStoreOwner = owner)
-    val mapViewModel: MapViewModel = hiltViewModel(viewModelStoreOwner = owner)
     val uiTexts by localizationViewModel.uiTexts.collectAsState()
     val effectiveLanguage by localizationViewModel.effectiveLanguage.collectAsState()
     val showOnboarding by appExperienceViewModel.showOnboarding.collectAsState()
     val runtimeTranslator = remember(localizationViewModel, effectiveLanguage) {
         UiRuntimeTranslator(
             effectiveLanguage = effectiveLanguage,
-            translateDynamic = { text -> localizationViewModel.translateDynamicText(text) }
+            translateDynamic = { text -> localizationViewModel.translateDynamicText(text) },
+            peekDynamic = { text -> localizationViewModel.peekDynamicTranslation(text) }
         )
     }
 
@@ -64,11 +67,11 @@ fun PutivnykApp() {
         LocalUiRuntimeTranslator provides runtimeTranslator
     ) {
 
+    // Asked once onboarding is dismissed instead of on top of it; the map asks again if needed.
     val requestLocationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { }
-
-    LaunchedEffect(Unit) {
+    val requestLocationPermissionIfNeeded = {
         val hasFine = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
@@ -85,10 +88,12 @@ fun PutivnykApp() {
         }
     }
 
+    // Screens draw their own top bars, so the outer scaffold only reserves the navigation bar,
+    // which keeps its default insets to stay clear of the gesture/3-button bar (edge-to-edge).
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+            NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 
@@ -107,7 +112,8 @@ fun PutivnykApp() {
                         alwaysShowLabel = true,
                         selected = currentDestination?.hierarchy?.any {
                             val route = it.route ?: return@any false
-                            route == screen.route || route.startsWith("${screen.route}?")
+                            route == screen.route || route.startsWith("${screen.route}?") ||
+                                (screen == Screen.Home && (route == Screen.Places.route || route == Screen.Favorites.route))
                         } == true,
                         onClick = {
                             navController.navigate(screen.route) {
@@ -126,16 +132,28 @@ fun PutivnykApp() {
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(
-                    onOpenMap = {
-                        navController.navigate(Screen.Map.route) {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onOpenMap = { navController.navigateToMapTab() },
+                    onOpenPlaces = { navController.navigate(Screen.Places.route) { launchSingleTop = true } },
+                    onOpenFavorites = { navController.navigate(Screen.Favorites.route) { launchSingleTop = true } },
+                    onOpenPlaceDetails = { placeId -> navController.navigate(Screen.LocationDetails.route(placeId)) }
+                )
+            }
+            composable(Screen.Places.route) {
+                PlacesScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPlaceDetails = { placeId -> navController.navigate(Screen.LocationDetails.route(placeId)) }
+                )
+            }
+            composable(Screen.Favorites.route) {
+                FavoritesScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPlaceDetails = { placeId -> navController.navigate(Screen.LocationDetails.route(placeId)) }
                 )
             }
             composable(
@@ -155,25 +173,12 @@ fun PutivnykApp() {
             }
             composable(Screen.Routes.route) {
                 RoutesScreen(
-                    onNavigateToMap = {
-                        navController.navigate(Screen.Map.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onNavigateToMap = { navController.navigateToMapTab() }
                 )
             }
             composable(Screen.Events.route) {
                 EventsScreen(
-                    onOpenMap = {
-                        navController.navigate(Screen.Map.route) {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onOpenMap = { navController.navigateToMapTab() }
                 )
             }
             composable(Screen.Settings.route) {
@@ -185,17 +190,13 @@ fun PutivnykApp() {
             ) {
                 LocationDetailsScreen(
                     onBack = { navController.popBackStack() },
-                    onRouteHere = { placeId ->
-
-                        mapViewModel.requestRouteToPlace(placeId)
+                    onOpenMap = {
                         navController.popBackStack()
-                        navController.navigate(Screen.Map.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navController.navigateToMapTab()
+                    },
+                    onRouteHere = {
+                        navController.popBackStack()
+                        navController.navigateToMapTab()
                     }
                 )
             }
@@ -203,24 +204,24 @@ fun PutivnykApp() {
     }
 
     if (showOnboarding) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text(tr("onboarding.title", "Ласкаво просимо до Putivnyk")) },
-            text = {
-                Text(
-                    tr(
-                        "onboarding.body",
-                        "Увімкніть геолокацію для точніших рекомендацій, зберігайте маршрути офлайн та використовуйте розділ Налаштування для експорту/імпорту даних."
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { appExperienceViewModel.completeOnboarding() }) {
-                    Text(tr("onboarding.continue", "Продовжити"))
-                }
+        OnboardingDialog(
+            onFinish = {
+                appExperienceViewModel.completeOnboarding()
+                requestLocationPermissionIfNeeded()
             }
         )
     }
+    }
+}
+
+/** Switches to the Map tab the same way the bottom navigation does, keeping each tab's stack. */
+private fun NavHostController.navigateToMapTab() {
+    navigate(Screen.Map.route) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 

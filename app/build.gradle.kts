@@ -14,8 +14,9 @@ val sdk35ProfileEnabled = providers
     .orNull
     ?.toBooleanStrictOrNull() == true
 
-val effectiveCompileSdk = 35
-val effectiveTargetSdk = 35
+// Android 17 (API 37). Needs Android Gradle Plugin 9.1.1+ and the "Android SDK Platform 37" package.
+val effectiveCompileSdk = 37
+val effectiveTargetSdk = 37
 val effectiveWorkManagerVersion = if (sdk35ProfileEnabled) "2.10.0" else "2.9.1"
 val effectiveHiltVersion = providers.gradleProperty("hiltVersion").orElse("2.58")
 val effectiveEventsBaseUrl = providers.gradleProperty("eventsBaseUrl").orElse("https://api.putivnyk.local/")
@@ -37,6 +38,14 @@ val secureEventsBaseUrlDebug = effectiveEventsBaseUrlDebug.map { raw ->
         "eventsBaseUrlDebug must be a valid HTTPS URL"
     }
     normalized
+}
+val effectiveEventsCertificatePins = providers.gradleProperty("eventsCertificatePins").orElse("")
+val secureEventsCertificatePins = effectiveEventsCertificatePins.map { raw ->
+    val pins = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+    require(pins.all { it.startsWith("sha256/") && it.length > "sha256/".length }) {
+        "eventsCertificatePins must be a comma-separated list of sha256/<base64> pins"
+    }
+    pins.joinToString(",")
 }
 val effectiveMapLibreStyleUri = providers.gradleProperty("mapLibreStyleUri").orElse("asset://maps/maplibre_style.json")
 val secureMapLibreStyleUri = effectiveMapLibreStyleUri.map { raw ->
@@ -94,6 +103,7 @@ android {
         }
 
         buildConfigField("String", "MAPLIBRE_STYLE_URI", "\"${secureMapLibreStyleUri.get()}\"")
+        buildConfigField("String", "EVENTS_CERTIFICATE_PINS", "\"${secureEventsCertificatePins.get()}\"")
         buildConfigField("int", "MAPLIBRE_CLUSTER_RADIUS", effectiveMapLibreClusterRadius.get())
         buildConfigField("int", "MAPLIBRE_CLUSTER_MIN_POINTS", effectiveMapLibreClusterMinPoints.get())
         buildConfigField("int", "MAPLIBRE_CLUSTER_TAP_PADDING", effectiveMapLibreClusterTapPadding.get())
@@ -215,6 +225,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation(platform("androidx.compose:compose-bom:2025.05.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")

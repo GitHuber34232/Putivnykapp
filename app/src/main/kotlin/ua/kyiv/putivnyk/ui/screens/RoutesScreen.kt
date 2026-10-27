@@ -1,5 +1,6 @@
 package ua.kyiv.putivnyk.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -63,6 +64,11 @@ fun RoutesScreen(
                 if (success) createdMessage else createFailedMessage
             )
         }
+    }
+
+    // The full-screen route builder is closed by the back gesture instead of leaving the tab.
+    BackHandler(enabled = showCreateRouteDialog && !isCreatingRoute) {
+        showCreateRouteDialog = false
     }
 
     if (showCreateRouteDialog) {
@@ -564,6 +570,7 @@ private fun RouteBuilderMapOverlay(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RouteCard(
     modifier: Modifier = Modifier,
@@ -575,13 +582,12 @@ fun RouteCard(
     onReverseClick: () -> Unit = {},
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = if (isActive) CardDefaults.cardColors(
+    ElevatedCard(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        colors = if (isActive) CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
-        ) else CardDefaults.cardColors()
+        ) else CardDefaults.elevatedCardColors()
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -591,11 +597,39 @@ fun RouteCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = route.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
-                )
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (route.transportMode == TransportMode.DRIVING) {
+                                Icons.Filled.DirectionsCar
+                            } else {
+                                Icons.AutoMirrored.Filled.DirectionsWalk
+                            },
+                            contentDescription = null
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = route.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (isActive) {
+                        Text(
+                            text = tr("map.active_route", "Активний маршрут"),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
 
                 IconButton(onClick = onFavoriteClick) {
                     Icon(
