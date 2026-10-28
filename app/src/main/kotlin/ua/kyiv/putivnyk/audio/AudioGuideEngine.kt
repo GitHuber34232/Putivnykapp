@@ -374,7 +374,7 @@ class AudioGuideEngine @Inject constructor(
             val translatedStory = description?.let { translate(it, language) }
             val fullyTranslated = translatedName != null && (description == null || translatedStory != null)
             if (fullyTranslated) {
-                name = translatedName!!
+                name = translatedName
                 story = translatedStory
                 locale = Locale.forLanguageTag(language)
             }

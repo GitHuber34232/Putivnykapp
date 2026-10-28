@@ -46,10 +46,10 @@ object NavigationProgressCalculator {
         val user = RoutePoint(latitude, longitude)
         val projection = if (geometry.size >= 2) RouteNavigationMetrics.projectOnPolyline(geometry, latitude, longitude) else null
         val hasProjection = projection != null && projection.totalDistanceMeters > 0.0
-        val totalMeters = if (hasProjection) projection!!.totalDistanceMeters else NativeGeoEngine.polylineDistanceMeters(waypoints)
+        val totalMeters = if (hasProjection) projection.totalDistanceMeters else NativeGeoEngine.polylineDistanceMeters(waypoints)
         val remainingStops = waypoints.drop(index + 1)
         val remainingMeters = if (hasProjection) {
-            (projection!!.totalDistanceMeters - projection.distanceFromStartMeters).coerceAtLeast(0.0)
+            (projection.totalDistanceMeters - projection.distanceFromStartMeters).coerceAtLeast(0.0)
         } else {
             NativeGeoEngine.polylineDistanceMeters(listOf(user) + remainingStops)
         }
@@ -59,7 +59,7 @@ object NavigationProgressCalculator {
         val next = waypoints.getOrNull(finalIndex + 1)
         val remainingGeometry = when {
             completed -> emptyList()
-            hasProjection -> RouteNavigationMetrics.remainingGeometry(geometry, projection!!)
+            hasProjection -> RouteNavigationMetrics.remainingGeometry(geometry, projection)
             else -> listOf(user) + remainingStops
         }
         return Progress(
