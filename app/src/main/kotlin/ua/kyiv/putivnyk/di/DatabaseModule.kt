@@ -48,6 +48,9 @@ object DatabaseModule {
     fun provideSyncStateDao(database: PutivnykDatabase) = database.syncStateDao()
 
     @Provides
+    fun provideStatsDao(database: PutivnykDatabase) = database.statsDao()
+
+    @Provides
     @Singleton
     fun provideGson(): Gson = GsonBuilder()
         .setPrettyPrinting()

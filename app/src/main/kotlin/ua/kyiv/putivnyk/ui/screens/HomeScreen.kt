@@ -23,7 +23,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MoreVert
@@ -37,6 +40,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -68,12 +72,15 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import ua.kyiv.putivnyk.data.model.Place
+import ua.kyiv.putivnyk.domain.stats.StatsSnapshot
+import ua.kyiv.putivnyk.domain.usecase.routing.DailyRouteGenerator
 import ua.kyiv.putivnyk.ui.components.EmptyStateView
 import ua.kyiv.putivnyk.ui.components.SkeletonListLoader
 import ua.kyiv.putivnyk.ui.i18n.tr
 import ua.kyiv.putivnyk.ui.i18n.trCategory
 import ua.kyiv.putivnyk.ui.i18n.trDynamic
 import ua.kyiv.putivnyk.ui.theme.RatingStar
+import ua.kyiv.putivnyk.ui.utils.RouteUiFormatter
 import ua.kyiv.putivnyk.ui.viewmodel.HomeViewModel
 import java.time.LocalTime
 import java.util.Locale
@@ -85,6 +92,8 @@ fun HomeScreen(
     onOpenPlaces: () -> Unit = {},
     onOpenFavorites: () -> Unit = {},
     onOpenPlaceDetails: (Long) -> Unit = {},
+    onOpenStats: () -> Unit = {},
+    onStartDailyRoute: (List<Long>) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val recommendations by viewModel.recommendedPlaces.collectAsState()
@@ -96,6 +105,8 @@ fun HomeScreen(
     val selectedPlaceId by viewModel.selectedPlaceId.collectAsState()
     val selectedFavoriteCategory by viewModel.favoriteCategory.collectAsState()
     val availableForPinning by viewModel.availablePlacesForPinning.collectAsState()
+    val dailyRoute by viewModel.dailyRoute.collectAsState()
+    val stats by viewModel.stats.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val msgPinned = tr("home.place_pinned", "Місце закріплено")
@@ -146,6 +157,28 @@ fun HomeScreen(
                     onOpenPlaces = onOpenPlaces,
                     onOpenFavorites = onOpenFavorites
                 )
+            }
+
+            dailyRoute?.let { route ->
+                item(key = "daily_route") {
+                    DailyRouteCard(
+                        route = route,
+                        onStart = { onStartDailyRoute(route.places.map { it.id }) },
+                        onOpenPlace = onOpenPlaceDetails,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
+            stats?.let { snapshot ->
+                item(key = "stats_summary") {
+                    StatsSummaryCard(
+                        snapshot = snapshot,
+                        achievementsTotal = viewModel.achievementsTotal,
+                        onClick = onOpenStats,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
             }
 
             if (pinnedPlaces.isNotEmpty()) {
@@ -403,6 +436,130 @@ private fun QuickAction(
             Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
             Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun DailyRouteCard(
+    route: DailyRouteGenerator.DailyRoute,
+    onStart: () -> Unit,
+    onOpenPlace: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null)
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(tr("daily.title", "Маршрут дня"), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "${route.places.size} ${tr("routes.points_label", "точок")} · " +
+                            "${RouteUiFormatter.formatDistance(route.distanceMeters)} · " +
+                            RouteUiFormatter.formatDuration(route.walkingMinutes),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                FilledTonalButton(onClick = onStart) { Text(tr("daily.start", "Почати")) }
+            }
+            route.places.forEachIndexed { index, place ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onOpenPlace(place.id) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (place.isVisited) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = if (place.isVisited) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(26.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (place.isVisited) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = tr("details.visited", "Відвідано"), modifier = Modifier.size(16.dp))
+                            } else {
+                                Text("${index + 1}", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        "${place.category.icon} ${trDynamic(place.name)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StatsSummaryCard(
+    snapshot: StatsSnapshot,
+    achievementsTotal: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(onClick = onClick, modifier = modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(tr("stats.my_walks", "Мої прогулянки"), style = MaterialTheme.typography.titleMedium)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatsSummaryValue(
+                        value = String.format(Locale.US, "%.1f", snapshot.totalDistanceMeters / 1000.0),
+                        label = tr("stats.km", "км"),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatsSummaryValue(
+                        value = snapshot.placesVisited.toString(),
+                        label = tr("stats.places_short", "місць"),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatsSummaryValue(
+                        value = "🔥${snapshot.currentStreakDays}",
+                        label = tr("stats.streak_short", "днів поспіль"),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatsSummaryValue(
+                        value = "🏆${snapshot.unlockedAchievements.size}/$achievementsTotal",
+                        label = tr("stats.achievements_short", "нагород"),
+                        modifier = Modifier.weight(1.2f)
+                    )
+                }
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+        }
+    }
+}
+
+@Composable
+private fun StatsSummaryValue(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(value, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

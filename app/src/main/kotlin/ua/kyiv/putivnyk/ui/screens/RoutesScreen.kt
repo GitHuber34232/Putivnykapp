@@ -1,5 +1,8 @@
 package ua.kyiv.putivnyk.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,9 +18,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.Route
 import ua.kyiv.putivnyk.data.model.RoutePoint
@@ -29,6 +34,8 @@ import ua.kyiv.putivnyk.ui.components.LoadingStateView
 import ua.kyiv.putivnyk.ui.maps.MapLibreMapView
 import ua.kyiv.putivnyk.ui.utils.RouteUiFormatter
 import ua.kyiv.putivnyk.ui.viewmodel.MapCenter
+import ua.kyiv.putivnyk.ui.share.RouteQrDialog
+import ua.kyiv.putivnyk.ui.viewmodel.RouteShareViewModel
 import ua.kyiv.putivnyk.ui.viewmodel.RoutesViewModel
 import androidx.compose.foundation.shape.RoundedCornerShape
 
@@ -36,8 +43,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 @Composable
 fun RoutesScreen(
     onNavigateToMap: () -> Unit = {},
-    viewModel: RoutesViewModel = hiltViewModel()
+    onScanQr: () -> Unit = {},
+    onImportText: (String) -> Unit = {},
+    onListenRoute: (Route) -> Unit = {},
+    viewModel: RoutesViewModel = hiltViewModel(),
+    shareViewModel: RouteShareViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var qrRoute by remember { mutableStateOf<Route?>(null) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    val shareMessage = tr("share.message", "Маршрут для прогулянки Києвом у Путівнику:")
+    val shareChooser = tr("share.chooser", "Поділитися маршрутом")
+    val linkCopiedMessage = tr("share.link_copied", "Посилання скопійовано")
+    val shareRoute: (Route) -> Unit = { route ->
+        shareViewModel.share(context, route, "$shareMessage ${route.name}", shareChooser)
+    }
     val routes by viewModel.routes.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val showOnlyFavorites by viewModel.showOnlyFavorites.collectAsState()
@@ -90,6 +111,12 @@ fun RoutesScreen(
             TopAppBar(
                 title = { Text(tr("routes.title", "Маршрути")) },
                 actions = {
+                    IconButton(onClick = onScanQr) {
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = tr("share.scan_qr", "Сканувати QR"))
+                    }
+                    IconButton(onClick = { showImportDialog = true }) {
+                        Icon(Icons.Filled.AddLink, contentDescription = tr("share.import_link", "Відкрити посилання"))
+                    }
                     IconButton(onClick = { viewModel.toggleShowOnlyFavorites() }) {
                         Icon(
                             imageVector = if (showOnlyFavorites) {
@@ -173,6 +200,9 @@ fun RoutesScreen(
                             }
                         },
                         onReverseClick = { viewModel.reverseRoute(route.id) },
+                        onShareClick = { shareRoute(route) },
+                        onQrClick = { qrRoute = route },
+                        onListenClick = { onListenRoute(route) },
                         onClick = {
                             selectedRouteDetails = route
                         }
@@ -181,6 +211,61 @@ fun RoutesScreen(
             }
         }
         }
+    }
+
+    qrRoute?.let { route ->
+        val link = remember(route) { shareViewModel.link(route) }
+        val qrContent = remember(route) { shareViewModel.qrContent(route) }
+        RouteQrDialog(
+            routeName = route.name,
+            qrContent = qrContent,
+            onShare = {
+                qrRoute = null
+                shareRoute(route)
+            },
+            onCopy = {
+                copyToClipboard(context, route.name, link)
+                qrRoute = null
+                coroutineScope.launch { snackbarHostState.showSnackbar(linkCopiedMessage) }
+            },
+            onDismiss = { qrRoute = null }
+        )
+    }
+
+    if (showImportDialog) {
+        var text by remember { mutableStateOf(readClipboardText(context).orEmpty()) }
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            icon = { Icon(Icons.Filled.AddLink, contentDescription = null) },
+            title = { Text(tr("share.import_link", "Відкрити посилання")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        tr("share.import_hint", "Вставте посилання на маршрут, яким з вами поділилися"),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        placeholder = { Text("putivnyk://route?d=…") },
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showImportDialog = false
+                        onImportText(text)
+                    },
+                    enabled = text.isNotBlank()
+                ) { Text(tr("share.open", "Відкрити")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) { Text(tr("home.cancel", "Скасувати")) }
+            }
+        )
     }
 
     routeToDelete?.let { route ->
@@ -580,8 +665,12 @@ fun RouteCard(
     onDeleteClick: () -> Unit,
     onActivateClick: () -> Unit,
     onReverseClick: () -> Unit = {},
+    onShareClick: () -> Unit = {},
+    onQrClick: () -> Unit = {},
+    onListenClick: () -> Unit = {},
     onClick: () -> Unit
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -723,18 +812,64 @@ fun RouteCard(
                         else tr("routes.activate", "На карту")
                     )
                 }
-                IconButton(onClick = onReverseClick) {
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = onListenClick) {
                     Icon(
-                        Icons.Filled.SwapVert,
-                        contentDescription = tr("routes.reverse", "Розвернути маршрут"),
+                        Icons.Filled.Headphones,
+                        contentDescription = tr("audio.route_stories", "Слухати історії маршруту"),
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                TextButton(onClick = onDeleteClick) {
-                    Text(tr("common.delete", "Видалити"))
+                IconButton(onClick = onShareClick) {
+                    Icon(
+                        Icons.Filled.Share,
+                        contentDescription = tr("share.share", "Поділитися"),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = tr("home.more", "Більше"))
+                    }
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(tr("share.qr_code", "QR-код маршруту")) },
+                            onClick = {
+                                menuExpanded = false
+                                onQrClick()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.QrCode2, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(tr("routes.reverse", "Розвернути маршрут")) },
+                            onClick = {
+                                menuExpanded = false
+                                onReverseClick()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.SwapVert, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(tr("common.delete", "Видалити")) },
+                            onClick = {
+                                menuExpanded = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) }
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+private fun copyToClipboard(context: Context, label: String, text: String) {
+    context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(label, text))
+}
+
+/** Prefills the import dialog when the clipboard holds a route link. */
+private fun readClipboardText(context: Context): String? = runCatching {
+    val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip ?: return null
+    if (clip.itemCount == 0) return null
+    clip.getItemAt(0).coerceToText(context)?.toString()?.takeIf { "putivnyk" in it || "route" in it }
+}.getOrNull()

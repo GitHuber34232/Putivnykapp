@@ -9,11 +9,16 @@
 
 Що вже є в застосунку:
 
-- офлайн-карта (без мережі карта сама перемикається на вбудовану)
+- офлайн-карта (без мережі карта сама перемикається на вбудовану) і завантаження детальних офлайн-районів Києва на вибір
 - збережені маршрути з навігацією, офлайн-маршрутизація через GraphHopper
+- навігація з вимкненим екраном: прогрес маршруту в сповіщенні, на Android 16+ — Live Update (сегментований прогрес по зупинках на екрані блокування)
 - місця з категоріями, пошуком і фільтрами
-- вибране та історія відвідувань
-- AR-камера: наводиш на пам'ятку — вона підсвічується і з'являється картка з інформацією
+- вибране, історія відвідувань і автоматична позначка «відвідано», коли підходиш до місця (за бажанням — навіть із закритим застосунком, через геозони)
+- AR-камера: пам'ятки розпізнаються не лише за GPS і компасом, а й за зображенням (порівняння з фото місця + ML Kit, усе на пристрої); під час маршруту в камері видно стрічку зі стрілками і наступну зупинку
+- аудіогід: озвучення описів місць мовою інтерфейсу, міні-плеєр, керування з екрана блокування; у фоні працює через foreground service типу mediaPlayback (як вимагає Android 17)
+- віджети на головний екран: «Поруч зі мною» і «Маршрут дня»
+- обмін маршрутами посиланням `putivnyk://route?d=…` або QR-кодом, вбудований сканер QR
+- статистика прогулянок (кілометри, серії днів, тиждень у графіку) і 25 досягнень
 - події з backend, які показуються й офлайн (останній завантажений список)
 - світла/темна тема та кольори шпалер (Material You)
 - офлайн-переклад через ML Kit
@@ -62,13 +67,15 @@ app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 
 Проєкт націлений на Android 17: `compileSdk` і `targetSdk` = 37, `minSdk` = 29. Збирається Android Gradle Plugin 9.1.1 на Gradle 9.3.1 і JDK 21. На Linux `./gradlew` сам доставить «Android SDK Platform 37» і build-tools 36.0.0; на Windows поставте Android SDK Platform 37 через SDK Manager в Android Studio.
 
-Перша збірка після оновлення до API 37 (новий AGP, CameraX, ML Kit object detection, core-splashscreen) впаде на dependency verification, бо контрольних сум нових залежностей ще немає в `gradle/verification-metadata.xml`. Один раз виконайте:
+Контрольних сум частини нових залежностей (AGP, CameraX, ML Kit object detection та image labeling, core-splashscreen, play-services-location) ще немає в `gradle/verification-metadata.xml` — для ZXing вони вже додані. Один раз виконайте:
 
 ```bash
 ./gradlew --write-verification-metadata sha256 build
 ```
 
-і закомітьте оновлений `gradle/verification-metadata.xml` разом зі схемою Room `app/schemas/ua.kyiv.putivnyk.data.local.PutivnykDatabase/9.json`, яку створить ця ж збірка.
+і закомітьте оновлений `gradle/verification-metadata.xml` разом зі схемами Room `app/schemas/ua.kyiv.putivnyk.data.local.PutivnykDatabase/9.json` і `10.json` (статистика прогулянок і досягнення), які створить ця ж збірка.
+
+Дозволи, які з'явилися разом із новими функціями: сповіщення (Android 13+), foreground service типів `location` і `mediaPlayback`, `POST_PROMOTED_NOTIFICATIONS` для Live Updates. Геолокація «Дозволити завжди» (`ACCESS_BACKGROUND_LOCATION`) запитується лише якщо користувач сам увімкне в налаштуваннях позначки з закритим застосунком — перед запитом показується пояснення. Для Google Play це означає заповнити декларацію про фонову геолокацію і типи foreground service.
 
 Для release-збірки можна закріпити сертифікат backend подій (certificate pinning):
 

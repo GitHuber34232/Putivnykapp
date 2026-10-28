@@ -11,6 +11,7 @@ import android.hardware.SensorManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.location.Location
+import android.os.SystemClock
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -79,8 +80,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -117,6 +120,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.label.ImageLabeler
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import com.google.mlkit.vision.objects.defaults.PredefinedCategory
@@ -136,6 +142,13 @@ private const val FOCUS_LOCK_DELAY_MS = 350L
 private const val FOCUS_RELEASE_DELAY_MS = 900L
 private const val MAX_LABELS = 6
 private const val ASSUMED_LANDMARK_WIDTH_M = 30.0
+private const val CANDIDATE_WINDOW = 0.3f
+private const val VISUAL_WEIGHT = 0.9f
+private const val VISUAL_SMOOTHING = 0.35f
+private const val RECOGNIZED_THRESHOLD = 0.62f
+private const val RECOGNIZED_MARGIN = 0.04f
+private const val FINGERPRINT_INTERVAL_MS = 400L
+private const val LABELING_INTERVAL_MS = 900L
 
 private class Holder<T>(var value: T)
 
@@ -166,7 +179,10 @@ fun ArExploreScreen(
     userLongitude: Double,
     onClose: () -> Unit,
     onOpenDetails: (Place) -> Unit,
-    onRouteTo: (Place) -> Unit
+    onRouteTo: (Place) -> Unit,
+    navigation: ArNavigationInfo? = null,
+    imageRecognition: Boolean = true,
+    onLandmarkRecognized: (Place) -> Unit = {}
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -196,6 +212,13 @@ fun ArExploreScreen(
 
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
     var detections by remember { mutableStateOf<List<DetectedBox>>(emptyList()) }
+    var frameFeatures by remember { mutableStateOf<FrameFeatures?>(null) }
+    val recognizer = remember(context) { LandmarkRecognizer(context.applicationContext) }
+    DisposableEffect(recognizer) { onDispose { recognizer.close() } }
+    LaunchedEffect(places, imageRecognition) {
+        if (imageRecognition) recognizer.prefetch(places)
+    }
+    val loadedReferences by recognizer.loadedCount.collectAsState()
     val tanHalfLong = remember(context) { backCameraTanHalfLongSide(context) }
     val sensorState = rememberCameraPose(context, view.display?.rotation ?: 0)
     val pose = sensorState.pose
@@ -239,10 +262,29 @@ fun ArExploreScreen(
     }
     val onScreen = targets.filter { it.inFront && it.x in (-0.1f * width)..(1.1f * width) }
 
-    // Candidate = the on-screen landmark closest to the crosshair, nearer places win ties.
+    // Appearance scores of the landmarks near the crosshair, smoothed over camera frames.
+    val visualScores = remember { mutableStateMapOf<Long, Float>() }
+    val currentOnScreen by rememberUpdatedState(onScreen)
+    LaunchedEffect(frameFeatures?.timestamp, loadedReferences) {
+        val fingerprint = frameFeatures?.fingerprint ?: return@LaunchedEffect
+        currentOnScreen
+            .filter { abs(it.x - width / 2f) < width * CANDIDATE_WINDOW }
+            .forEach { target ->
+                val score = recognizer.score(target.place.id, fingerprint) ?: return@forEach
+                val previous = visualScores[target.place.id]
+                visualScores[target.place.id] = if (previous == null) score else previous + VISUAL_SMOOTHING * (score - previous)
+            }
+    }
+    val labels = frameFeatures?.labels.orEmpty()
+
+    // Candidate = geometry (closest to the crosshair, nearer wins) + appearance + scene labels.
     val candidate = onScreen
-        .filter { abs(it.x - width / 2f) < width * 0.28f }
-        .minByOrNull { abs(it.x - width / 2f) / width + it.distanceM / 3000.0 }
+        .filter { abs(it.x - width / 2f) < width * CANDIDATE_WINDOW }
+        .maxByOrNull { target ->
+            val geometry = -(abs(target.x - width / 2f) / width + target.distanceM / 3000.0).toFloat()
+            val visual = visualScores[target.place.id]?.let { (it - 0.5f) * VISUAL_WEIGHT } ?: 0f
+            geometry + visual + LandmarkRecognizer.labelBonus(target.place.category, labels)
+        }
 
     var lockedId by remember { mutableStateOf<Long?>(null) }
     val candidateId = candidate?.place?.id
@@ -259,6 +301,20 @@ fun ArExploreScreen(
         }
     }
     val locked = lockedId?.let { id -> targets.firstOrNull { it.place.id == id } }
+    // "Recognised by image": the locked landmark clearly looks like its reference photos.
+    val recognizedScore = locked?.let { target ->
+        val own = visualScores[target.place.id] ?: return@let null
+        val rival = onScreen
+            .filter { it.place.id != target.place.id && abs(it.x - width / 2f) < width * CANDIDATE_WINDOW }
+            .mapNotNull { visualScores[it.place.id] }
+            .maxOrNull() ?: 0f
+        own.takeIf { it >= RECOGNIZED_THRESHOLD && it - rival >= RECOGNIZED_MARGIN }
+    }
+    val reportedRecognitions = remember { mutableSetOf<Long>() }
+    LaunchedEffect(locked?.place?.id, recognizedScore != null) {
+        val place = locked?.place ?: return@LaunchedEffect
+        if (recognizedScore != null && reportedRecognitions.add(place.id)) onLandmarkRecognized(place)
+    }
     // Keep the last locked place so the card can animate out with its content.
     // Plain holders: these are refreshed on every sensor frame and must not trigger recomposition.
     val lastLockedPlace = remember { Holder<Pair<Place, Double>?>(null) }
@@ -290,7 +346,9 @@ fun ArExploreScreen(
             CameraPreviewWithDetection(
                 modifier = Modifier.fillMaxSize(),
                 viewSize = viewSize,
-                onDetections = { detections = it }
+                onDetections = { detections = it },
+                recognitionEnabled = imageRecognition,
+                onFrameFeatures = { frameFeatures = it }
             )
         } else {
             ArMessage(
@@ -309,6 +367,30 @@ fun ArExploreScreen(
             alpha = highlightAlpha,
             modifier = Modifier.fillMaxSize()
         )
+
+        if (navigation != null && pose != null && hasUserLocation && width > 0f) {
+            ArRouteOverlay(
+                info = navigation,
+                pose = pose,
+                userLatitude = userLatitude,
+                userLongitude = userLongitude,
+                declinationDeg = declination,
+                width = width,
+                height = height,
+                focalPx = focalPx,
+                modifier = Modifier.fillMaxSize()
+            )
+            ArNextStopPin(
+                info = navigation,
+                pose = pose,
+                userLatitude = userLatitude,
+                userLongitude = userLongitude,
+                declinationDeg = declination,
+                width = width,
+                height = height,
+                focalPx = focalPx
+            )
+        }
 
         // Floating name tags for other landmarks in view.
         onScreen
@@ -382,7 +464,18 @@ fun ArExploreScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (lockedId == null && hasUserLocation && pose != null && places.isNotEmpty()) {
+            if (navigation != null && hasUserLocation && pose != null) {
+                ArDirectionPanel(
+                    info = navigation,
+                    pose = pose,
+                    userLatitude = userLatitude,
+                    userLongitude = userLongitude,
+                    declinationDeg = declination,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            if (navigation == null && lockedId == null && hasUserLocation && pose != null && places.isNotEmpty()) {
                 val nearest = targets.minByOrNull { it.distanceM }
                 val hint = if (onScreen.isEmpty() && nearest != null) nearest else null
                 ArStatusChip(
@@ -421,6 +514,7 @@ fun ArExploreScreen(
                         ArPlaceCard(
                             place = place,
                             distanceM = distance,
+                            recognizedScore = recognizedScore?.takeIf { lockedId == place.id },
                             onOpenDetails = { onOpenDetails(place) },
                             onRouteTo = { onRouteTo(place) }
                         )
@@ -665,6 +759,7 @@ private fun ArMessage(
 private fun ArPlaceCard(
     place: Place,
     distanceM: Double,
+    recognizedScore: Float?,
     onOpenDetails: () -> Unit,
     onRouteTo: () -> Unit
 ) {
@@ -736,6 +831,20 @@ private fun ArPlaceCard(
                     }
                 }
             }
+            if (recognizedScore != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                ) {
+                    Text(
+                        text = "📷 ${tr("ar.recognized", "Розпізнано за зображенням")} · ${(recognizedScore * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
             place.description?.takeIf { it.isNotBlank() }?.let { description ->
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -774,12 +883,16 @@ private fun formatDistance(meters: Double): String =
 private fun CameraPreviewWithDetection(
     modifier: Modifier,
     viewSize: IntSize,
-    onDetections: (List<DetectedBox>) -> Unit
+    onDetections: (List<DetectedBox>) -> Unit,
+    recognitionEnabled: Boolean = false,
+    onFrameFeatures: (FrameFeatures) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentViewSize by rememberUpdatedState(viewSize)
     val currentOnDetections by rememberUpdatedState(onDetections)
+    val currentOnFrameFeatures by rememberUpdatedState(onFrameFeatures)
+    val recognition = rememberUpdatedState(recognitionEnabled)
 
     val previewView = remember {
         PreviewView(context).apply {
@@ -798,6 +911,8 @@ private fun CameraPreviewWithDetection(
                 .enableClassification()
                 .build()
         )
+        val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
+        val frameAnalyzer = FrameAnalyzer(detector, labeler)
         val providerFuture = ProcessCameraProvider.getInstance(context)
         var cameraProvider: ProcessCameraProvider? = null
         var analysis: ImageAnalysis? = null
@@ -829,12 +944,17 @@ private fun CameraPreviewWithDetection(
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
             imageAnalysis.setAnalyzer(executor) { proxy ->
-                analyzeFrame(proxy, detector) { boxes, imageWidth, imageHeight ->
-                    val size = currentViewSize
-                    if (size.width > 0 && imageWidth > 0) {
-                        currentOnDetections(boxes.mapToView(imageWidth, imageHeight, size))
-                    }
-                }
+                frameAnalyzer.analyze(
+                    proxy = proxy,
+                    recognition = recognition.value,
+                    onBoxes = { boxes, imageWidth, imageHeight ->
+                        val size = currentViewSize
+                        if (size.width > 0 && imageWidth > 0) {
+                            currentOnDetections(boxes.mapToView(imageWidth, imageHeight, size))
+                        }
+                    },
+                    onFeatures = { features -> currentOnFrameFeatures(features) }
+                )
             }
             analysis = imageAnalysis
 
@@ -861,44 +981,108 @@ private fun CameraPreviewWithDetection(
             cameraProvider?.unbindAll()
             executor.shutdown()
             detector.close()
+            labeler.close()
         }
     }
 
     AndroidView(factory = { previewView }, modifier = modifier)
 }
 
-@androidx.annotation.OptIn(ExperimentalGetImage::class)
-private fun analyzeFrame(
-    proxy: androidx.camera.core.ImageProxy,
-    detector: com.google.mlkit.vision.objects.ObjectDetector,
-    onResult: (List<DetectedBox>, Int, Int) -> Unit
+/**
+ * Runs on the camera analysis thread: ML Kit object detection on every frame, plus (when image
+ * recognition is on) an appearance fingerprint of the most landmark-like region and scene labels.
+ */
+private class FrameAnalyzer(
+    private val detector: com.google.mlkit.vision.objects.ObjectDetector,
+    private val labeler: ImageLabeler
 ) {
-    val mediaImage = proxy.image
-    if (mediaImage == null) {
-        proxy.close()
-        return
-    }
-    val rotation = proxy.imageInfo.rotationDegrees
-    val (imageWidth, imageHeight) = if (rotation % 180 == 0) {
-        proxy.width to proxy.height
-    } else {
-        proxy.height to proxy.width
-    }
-    val input = InputImage.fromMediaImage(mediaImage, rotation)
-    runCatching {
-        detector.process(input)
-            .addOnSuccessListener { objects ->
-                val boxes = objects.map { obj ->
-                    val b = obj.boundingBox
-                    DetectedBox(
-                        rect = Rect(b.left.toFloat(), b.top.toFloat(), b.right.toFloat(), b.bottom.toFloat()),
-                        isPlace = obj.labels.any { it.text == PredefinedCategory.PLACE }
-                    )
+    private var lastFingerprintAt = 0L
+    private var lastLabelsAt = 0L
+    private var lastLabels: List<String> = emptyList()
+
+    /** Region of the frame to fingerprint: the best "place" box of the previous frame. */
+    @Volatile
+    private var focusBox = LandmarkRecognizer.CropBox.CENTER
+
+    @androidx.annotation.OptIn(ExperimentalGetImage::class)
+    fun analyze(
+        proxy: androidx.camera.core.ImageProxy,
+        recognition: Boolean,
+        onBoxes: (List<DetectedBox>, Int, Int) -> Unit,
+        onFeatures: (FrameFeatures) -> Unit
+    ) {
+        val mediaImage = proxy.image
+        if (mediaImage == null) {
+            proxy.close()
+            return
+        }
+        val rotation = proxy.imageInfo.rotationDegrees
+        val (imageWidth, imageHeight) = if (rotation % 180 == 0) {
+            proxy.width to proxy.height
+        } else {
+            proxy.height to proxy.width
+        }
+        val now = SystemClock.elapsedRealtime()
+        val fingerprint = if (recognition && now - lastFingerprintAt >= FINGERPRINT_INTERVAL_MS) {
+            lastFingerprintAt = now
+            runCatching {
+                LandmarkRecognizer.fingerprintOf(LandmarkRecognizer.uprightSmallFrame(proxy.toBitmap(), rotation), focusBox)
+            }.getOrNull()
+        } else {
+            null
+        }
+        val runLabels = recognition && now - lastLabelsAt >= LABELING_INTERVAL_MS
+        if (runLabels) lastLabelsAt = now
+        val input = InputImage.fromMediaImage(mediaImage, rotation)
+
+        fun finish() {
+            if (fingerprint != null) onFeatures(FrameFeatures(fingerprint, lastLabels, now))
+            proxy.close()
+        }
+
+        runCatching {
+            detector.process(input)
+                .addOnSuccessListener { objects ->
+                    val boxes = objects.map { obj ->
+                        val b = obj.boundingBox
+                        DetectedBox(
+                            rect = Rect(b.left.toFloat(), b.top.toFloat(), b.right.toFloat(), b.bottom.toFloat()),
+                            isPlace = obj.labels.any { it.text == PredefinedCategory.PLACE }
+                        )
+                    }
+                    focusBox = focusRegion(boxes, imageWidth.toFloat(), imageHeight.toFloat())
+                    onBoxes(boxes, imageWidth, imageHeight)
                 }
-                onResult(boxes, imageWidth, imageHeight)
-            }
-            .addOnCompleteListener { proxy.close() }
-    }.onFailure { proxy.close() }
+                .addOnCompleteListener {
+                    if (runLabels) {
+                        labeler.process(input)
+                            .addOnSuccessListener { labels ->
+                                lastLabels = labels.filter { it.confidence >= LABEL_MIN_CONFIDENCE }.map { it.text }
+                            }
+                            .addOnCompleteListener { finish() }
+                    } else {
+                        finish()
+                    }
+                }
+        }.onFailure { proxy.close() }
+    }
+
+    private fun focusRegion(boxes: List<DetectedBox>, width: Float, height: Float): LandmarkRecognizer.CropBox {
+        val best = boxes
+            .filter { it.rect.width > width * 0.15f && it.rect.height > height * 0.15f }
+            .maxByOrNull { (if (it.isPlace) 2f else 1f) * it.rect.width * it.rect.height }
+            ?: return LandmarkRecognizer.CropBox.CENTER
+        return LandmarkRecognizer.CropBox(
+            left = best.rect.left / width,
+            top = best.rect.top / height,
+            right = best.rect.right / width,
+            bottom = best.rect.bottom / height
+        )
+    }
+
+    private companion object {
+        const val LABEL_MIN_CONFIDENCE = 0.6f
+    }
 }
 
 /** Maps boxes from (rotated) analysis image coordinates to a FILL_CENTER preview. */

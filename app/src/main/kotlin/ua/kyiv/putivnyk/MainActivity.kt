@@ -1,5 +1,6 @@
 package ua.kyiv.putivnyk
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
@@ -15,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
+import ua.kyiv.putivnyk.navigation.DeepLinkRouter
 import ua.kyiv.putivnyk.ui.theme.PutivnykTheme
 import ua.kyiv.putivnyk.ui.viewmodel.AppearanceViewModel
 import ua.kyiv.putivnyk.ui.PutivnykApp as PutivnykAppContent
@@ -35,6 +37,8 @@ class MainActivity : ComponentActivity() {
                 SystemClock.uptimeMillis() - splashStart < SPLASH_MAX_MS
         }
         enableEdgeToEdge()
+        // A restored activity already handled its link before it was recreated.
+        if (savedInstanceState == null) DeepLinkRouter.handle(intent)
 
         setContent {
             val appearance by appearanceViewModel.appearance.collectAsState()
@@ -54,6 +58,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** Links from widgets, notifications and shared routes while the app is already open. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        DeepLinkRouter.handle(intent)
     }
 
     private companion object {

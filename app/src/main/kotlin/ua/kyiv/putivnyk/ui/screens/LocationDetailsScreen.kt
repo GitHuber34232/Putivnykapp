@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Schedule
@@ -85,6 +86,7 @@ fun LocationDetailsScreen(
     onBack: () -> Unit,
     onOpenMap: () -> Unit = onBack,
     onRouteHere: (() -> Unit)? = null,
+    onListen: ((Long) -> Unit)? = null,
     viewModel: LocationDetailsViewModel = hiltViewModel()
 ) {
     val place by viewModel.place.collectAsState()
@@ -288,6 +290,16 @@ fun LocationDetailsScreen(
                             Icon(Icons.Filled.Route, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(tr("details.add_active_route", "До маршруту"), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    if (onListen != null) {
+                        FilledTonalButton(
+                            onClick = { onListen(current.id) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.Headphones, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(tr("audio.listen_story", "Слухати аудіогід"), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }

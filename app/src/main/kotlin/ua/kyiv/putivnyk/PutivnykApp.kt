@@ -11,8 +11,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import ua.kyiv.putivnyk.data.repository.AchievementsRepository
 import ua.kyiv.putivnyk.data.seed.SeedManager
+import ua.kyiv.putivnyk.di.AppCoroutineScope
+import ua.kyiv.putivnyk.i18n.AppText
+import ua.kyiv.putivnyk.navigation.NavigationEffects
+import ua.kyiv.putivnyk.notifications.AppNotifications
 import ua.kyiv.putivnyk.sync.SyncScheduler
+import ua.kyiv.putivnyk.tracking.GeofenceRegistrar
+import ua.kyiv.putivnyk.widget.WidgetUpdater
 import androidx.work.WorkManager
 import javax.inject.Inject
 
@@ -28,6 +35,27 @@ class PutivnykApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject
     lateinit var workManager: WorkManager
 
+    @Inject
+    lateinit var appScope: AppCoroutineScope
+
+    @Inject
+    lateinit var appNotifications: AppNotifications
+
+    @Inject
+    lateinit var achievementsRepository: AchievementsRepository
+
+    @Inject
+    lateinit var navigationEffects: NavigationEffects
+
+    @Inject
+    lateinit var geofenceRegistrar: GeofenceRegistrar
+
+    @Inject
+    lateinit var widgetUpdater: WidgetUpdater
+
+    @Inject
+    lateinit var appText: AppText
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
@@ -35,7 +63,15 @@ class PutivnykApp : Application(), Configuration.Provider, ImageLoaderFactory {
         instance = this
         applicationScope.launch(context = Dispatchers.IO, start = CoroutineStart.DEFAULT) {
             seedManager.seedDatabase()
+            // Widgets placed before the places were seeded (or before an update) get their content.
+            runCatching { widgetUpdater.updateAll() }
         }
+
+        appNotifications.ensureChannels()
+        appScope.launch { runCatching { appNotifications.localizeChannels(appText) } }
+        achievementsRepository.startObserving(appScope)
+        navigationEffects.start(appScope)
+        geofenceRegistrar.startObserving(appScope)
 
         SyncScheduler.ensurePeriodicEventsSync(workManager)
         SyncScheduler.ensurePeriodicOfflineCacheSync(workManager)

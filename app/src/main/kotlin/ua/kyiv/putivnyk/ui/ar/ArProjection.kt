@@ -21,6 +21,8 @@ object ArProjection {
     /** Point of a landmark we aim at (roughly the middle of a facade), metres. */
     private const val TARGET_HEIGHT_M = 8.0
 
+    private const val METERS_PER_DEGREE_LAT = 111_195.0
+
     data class CameraPose(
         val right: FloatArray,
         val up: FloatArray,
@@ -67,6 +69,29 @@ object ArProjection {
             (cos(bearing) * horizontal).toFloat(),
             sin(elevation).toFloat()
         )
+    }
+
+    /** Unit ENU direction from the eye to a point on the ground [eastM]/[northM] metres away. */
+    fun groundDirection(eastM: Double, northM: Double, heightM: Double = 0.0): FloatArray {
+        val up = heightM - EYE_HEIGHT_M
+        val length = sqrt(eastM * eastM + northM * northM + up * up).takeIf { it > 1e-6 } ?: 1.0
+        return floatArrayOf((eastM / length).toFloat(), (northM / length).toFloat(), (up / length).toFloat())
+    }
+
+    /** East/north offset in metres of [latitude]/[longitude] from the user (fine for a few km). */
+    fun offsetMeters(userLatitude: Double, userLongitude: Double, latitude: Double, longitude: Double): Pair<Double, Double> {
+        val north = (latitude - userLatitude) * METERS_PER_DEGREE_LAT
+        val east = (longitude - userLongitude) * METERS_PER_DEGREE_LAT * cos(Math.toRadians(userLatitude))
+        return east to north
+    }
+
+    /**
+     * Rotates a true-north offset into the magnetic frame of the rotation-vector sensor
+     * ([declinationDeg] east positive), so ground points line up with the compass heading.
+     */
+    fun toMagnetic(east: Double, north: Double, declinationDeg: Float): Pair<Double, Double> {
+        val d = Math.toRadians(declinationDeg.toDouble())
+        return (east * cos(d) - north * sin(d)) to (east * sin(d) + north * cos(d))
     }
 
     /**

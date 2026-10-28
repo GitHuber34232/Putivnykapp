@@ -1,5 +1,6 @@
 <resources>
-    <string name="app_name">Путівник</string>
+    <!-- The brand name stays the same in every language. -->
+    <string name="app_name" translatable="false">Путівник</string>
     <string name="map_screen_title">Карта Києва</string>
     <string name="places_screen_title">Цікаві місця</string>
     <string name="routes_screen_title">Маршрути</string>
@@ -7,4 +8,23 @@
     <string name="loading">Завантаження…</string>
     <string name="error_loading_map">Помилка завантаження карти</string>
     <string name="no_location_permission">Для роботи додатку потрібен доступ до геолокації</string>
+
+    <!-- Notification channels (renamed to the app language at start-up). -->
+    <string name="channel_navigation">Навігація</string>
+    <string name="channel_navigation_description">Прогрес маршруту на екрані блокування</string>
+    <string name="channel_audio">Аудіогід</string>
+    <string name="channel_audio_description">Керування відтворенням аудіогіду</string>
+    <string name="channel_visits">Відвідані місця</string>
+    <string name="channel_visits_description">Коли місце автоматично позначено відвіданим</string>
+    <string name="channel_achievements">Досягнення</string>
+    <string name="channel_achievements_description">Нові досягнення за прогулянки</string>
+
+    <!-- Home-screen widgets -->
+    <string name="widget_nearby_label">Поруч зі мною</string>
+    <string name="widget_nearby_description">Найближчі цікаві місця Києва</string>
+    <string name="widget_daily_label">Маршрут дня</string>
+    <string name="widget_daily_description">Коротка прогулянка, нова щодня</string>
+    <string name="widget_loading">Завантаження…</string>
+    <string name="widget_refresh">Оновити</string>
+    <string name="widget_start">Почати</string>
 </resources>

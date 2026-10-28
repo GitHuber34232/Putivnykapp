@@ -16,7 +16,7 @@ import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
 import ua.kyiv.putivnyk.i18n.AssetUiTranslations
 import ua.kyiv.putivnyk.i18n.OnDeviceTranslationService
 import ua.kyiv.putivnyk.i18n.SupportedLanguages
-import java.security.MessageDigest
+import ua.kyiv.putivnyk.i18n.dynamicTranslationKey
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -390,12 +390,6 @@ class UiLocalizationViewModel @Inject constructor(
 
         return null
     }
-}
-
-private fun dynamicTranslationKey(text: String): String {
-    val digest = MessageDigest.getInstance("SHA-256").digest(text.toByteArray())
-    val hex = digest.joinToString(separator = "") { byte -> "%02x".format(byte) }
-    return "dyn.$hex"
 }
 
 private object UiStringDefaults {

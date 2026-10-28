@@ -16,16 +16,23 @@ import kotlinx.coroutines.launch
 import ua.kyiv.putivnyk.data.model.MapPreferenceKeys
 import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.PlaceCategory
+import ua.kyiv.putivnyk.data.repository.DailyRouteRepository
 import ua.kyiv.putivnyk.data.repository.PlaceRepository
+import ua.kyiv.putivnyk.data.repository.StatsRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
+import ua.kyiv.putivnyk.domain.stats.AchievementCatalog
+import ua.kyiv.putivnyk.domain.stats.StatsSnapshot
 import ua.kyiv.putivnyk.domain.usecase.recommendation.RecommendationEngine
+import ua.kyiv.putivnyk.domain.usecase.routing.DailyRouteGenerator
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val placeRepository: PlaceRepository,
     private val userPreferenceRepository: UserPreferenceRepository,
-    private val recommendationEngine: RecommendationEngine
+    private val recommendationEngine: RecommendationEngine,
+    dailyRouteRepository: DailyRouteRepository,
+    statsRepository: StatsRepository
 ) : ViewModel() {
 
     companion object {
@@ -58,6 +65,15 @@ class HomeViewModel @Inject constructor(
 
     private val _snackbarEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val snackbarEvent: SharedFlow<String> = _snackbarEvent.asSharedFlow()
+
+    /** "Route of the day", the same one as in the home-screen widget. */
+    val dailyRoute: StateFlow<DailyRouteGenerator.DailyRoute?> = dailyRouteRepository.observeToday()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val stats: StateFlow<StatsSnapshot?> = statsRepository.observeSnapshot()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val achievementsTotal: Int = AchievementCatalog.all.size
 
     private val allPlaces = placeRepository.getAllPlaces()
         .stateIn(

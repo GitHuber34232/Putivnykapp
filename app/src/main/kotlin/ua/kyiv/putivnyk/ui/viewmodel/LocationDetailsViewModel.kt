@@ -18,11 +18,13 @@ import ua.kyiv.putivnyk.data.model.RoutePoint
 import ua.kyiv.putivnyk.data.repository.LocalizationRepository
 import ua.kyiv.putivnyk.data.repository.PlaceRepository
 import ua.kyiv.putivnyk.data.repository.RouteRepository
+import ua.kyiv.putivnyk.data.repository.StatsRepository
 import ua.kyiv.putivnyk.data.repository.SyncStateRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteMetricsCalculator
 import ua.kyiv.putivnyk.i18n.OnDeviceTranslationService
 import ua.kyiv.putivnyk.i18n.SupportedLanguages
+import ua.kyiv.putivnyk.tracking.VisitTracker
 import javax.inject.Inject
 import java.util.Locale
 
@@ -34,7 +36,8 @@ class LocationDetailsViewModel @Inject constructor(
     private val translationService: OnDeviceTranslationService,
     private val routeRepository: RouteRepository,
     private val userPreferenceRepository: UserPreferenceRepository,
-    private val syncStateRepository: SyncStateRepository
+    private val syncStateRepository: SyncStateRepository,
+    private val statsRepository: StatsRepository
 ) : ViewModel() {
 
     // The nav argument is declared as NavType.LongType, so the handle stores a Long.
@@ -104,6 +107,14 @@ class LocationDetailsViewModel @Inject constructor(
         viewModelScope.launch {
             placeRepository.toggleVisited(current.id)
             _place.value = placeRepository.getPlaceById(current.id)
+            // Manual marks count in the walk statistics like automatic ones.
+            runCatching {
+                if (_place.value?.isVisited == true) {
+                    statsRepository.recordVisit(current.id, VisitTracker.SOURCE_MANUAL)
+                } else {
+                    statsRepository.removeVisits(current.id)
+                }
+            }
             val msg = if (_place.value?.isVisited == true) "marked_visited" else "unmarked_visited"
             _snackbarEvent.tryEmit(msg)
         }

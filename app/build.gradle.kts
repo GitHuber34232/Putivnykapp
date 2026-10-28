@@ -264,6 +264,12 @@ dependencies {
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.google.mlkit:object-detection:17.0.2")
+    // AR: on-device scene labels that back up landmark recognition by appearance.
+    implementation("com.google.mlkit:image-labeling:17.0.9")
+    // Geofences for automatic "visited" marks while the app is closed (opt-in).
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    // QR codes for sharing routes (encode + decode, pure Java).
+    implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.camera:camera-camera2:1.4.1")
     implementation("androidx.camera:camera-lifecycle:1.4.1")
     implementation("androidx.camera:camera-view:1.4.1")

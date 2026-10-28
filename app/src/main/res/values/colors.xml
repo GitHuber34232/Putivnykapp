@@ -6,4 +6,12 @@
     <color name="splash_background">#1F5FAE</color>
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
+
+    <!-- Home-screen widgets (dark variants in values-night). -->
+    <color name="widget_surface">#FFF9F9FE</color>
+    <color name="widget_on_surface">#FF1A1C1F</color>
+    <color name="widget_on_surface_variant">#FF434750</color>
+    <color name="widget_accent">#FF1D5EAD</color>
+    <color name="widget_on_accent">#FFFFFFFF</color>
+    <color name="widget_accent_container">#FFD6E3FF</color>
 </resources>

@@ -22,6 +22,9 @@ sealed class Screen(
     }
     data object Places : Screen("places", "Цікаві місця", Icons.Filled.Place)
     data object Favorites : Screen("favorites", "Улюблені", Icons.Filled.Favorite)
+    data object Stats : Screen("stats", "Статистика", Icons.Filled.EmojiEvents)
+    data object OfflineMaps : Screen("offline_maps", "Офлайн-карти", Icons.Filled.CloudDownload)
+    data object QrScanner : Screen("qr_scanner", "Сканер QR", Icons.Filled.QrCodeScanner)
 
     companion object {
         val bottomNavItems = listOf(Home, Map, Routes, Events, Settings)

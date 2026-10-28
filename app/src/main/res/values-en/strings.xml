@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="map_screen_title">Kyiv map</string>
+    <string name="places_screen_title">Interesting places</string>
+    <string name="routes_screen_title">Routes</string>
+    <string name="settings_screen_title">Settings</string>
+    <string name="loading">Loading…</string>
+    <string name="error_loading_map">Could not load the map</string>
+    <string name="no_location_permission">The app needs access to your location</string>
+
+    <string name="channel_navigation">Navigation</string>
+    <string name="channel_navigation_description">Route progress on the lock screen</string>
+    <string name="channel_audio">Audio guide</string>
+    <string name="channel_audio_description">Audio guide playback controls</string>
+    <string name="channel_visits">Visited places</string>
+    <string name="channel_visits_description">When a place is marked as visited automatically</string>
+    <string name="channel_achievements">Achievements</string>
+    <string name="channel_achievements_description">New achievements for your walks</string>
+
+    <string name="widget_nearby_label">Near me</string>
+    <string name="widget_nearby_description">The closest interesting places in Kyiv</string>
+    <string name="widget_daily_label">Route of the day</string>
+    <string name="widget_daily_description">A short walk, new every day</string>
+    <string name="widget_loading">Loading…</string>
+    <string name="widget_refresh">Refresh</string>
+    <string name="widget_start">Start</string>
+</resources>

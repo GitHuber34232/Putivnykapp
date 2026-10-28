@@ -1,9 +1,11 @@
 package ua.kyiv.putivnyk.ui.screens
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -29,6 +31,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Download
@@ -47,6 +59,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,11 +86,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -84,9 +103,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ua.kyiv.putivnyk.BuildConfig
+import ua.kyiv.putivnyk.data.repository.FeatureSettings
 import ua.kyiv.putivnyk.ui.i18n.tr
 import ua.kyiv.putivnyk.ui.viewmodel.AppExperienceViewModel
 import ua.kyiv.putivnyk.ui.viewmodel.AppearanceViewModel
+import ua.kyiv.putivnyk.ui.viewmodel.FeaturesViewModel
 import ua.kyiv.putivnyk.ui.viewmodel.SettingsToolsViewModel
 import ua.kyiv.putivnyk.ui.viewmodel.UiLocalizationViewModel
 import java.io.ByteArrayOutputStream
@@ -98,7 +119,10 @@ private const val MAX_IMPORT_BYTES = 2 * 1024 * 1024
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    onOpenOfflineMaps: () -> Unit = {},
+    onOpenStats: () -> Unit = {}
+) {
     val context = LocalContext.current
     val activity = remember(context) { context.findComponentActivity() }
     val owner: ViewModelStoreOwner = activity ?: checkNotNull(LocalViewModelStoreOwner.current)
@@ -106,6 +130,8 @@ fun SettingsScreen() {
     val appExperienceViewModel: AppExperienceViewModel = hiltViewModel(viewModelStoreOwner = owner)
     val appearanceViewModel: AppearanceViewModel = hiltViewModel(viewModelStoreOwner = owner)
     val toolsViewModel: SettingsToolsViewModel = hiltViewModel(viewModelStoreOwner = owner)
+    val featuresViewModel: FeaturesViewModel = hiltViewModel()
+    val features by featuresViewModel.values.collectAsState()
     val language by viewModel.manualLanguage.collectAsState()
     val isAutoMode by viewModel.isAutoMode.collectAsState()
     val effectiveLanguage by viewModel.effectiveLanguage.collectAsState()
@@ -118,6 +144,28 @@ fun SettingsScreen() {
     val snackbarHostState = remember { SnackbarHostState() }
     var exportPayload by remember { mutableStateOf<String?>(null) }
     var showAllModelsDialog by remember { mutableStateOf(false) }
+    var showBackgroundLocationRationale by remember { mutableStateOf(false) }
+    var notificationsGranted by remember { mutableStateOf(hasNotificationPermission(context)) }
+    val msgBackgroundDenied = tr(
+        "settings.background_location_denied",
+        "Без дозволу «Дозволити завжди» місця позначаються лише з відкритою картою"
+    )
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notificationsGranted = granted
+    }
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        featuresViewModel.set(FeatureSettings.KEY_BACKGROUND_GEOFENCES, granted)
+        if (!granted) coroutineScope.launch { snackbarHostState.showSnackbar(msgBackgroundDenied) }
+    }
+    // Android asks for "all the time" only after the foreground location permission.
+    val foregroundLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        } else {
+            coroutineScope.launch { snackbarHostState.showSnackbar(msgBackgroundDenied) }
+        }
+    }
 
     val msgExported = tr("settings.exported", "Маршрути експортовано")
     val msgExportFailed = tr("settings.export_failed", "Не вдалося зберегти файл")
@@ -309,6 +357,84 @@ fun SettingsScreen() {
                 }
             }
 
+            item(key = "walks") {
+                SettingsSection(icon = Icons.Filled.AutoAwesome, title = tr("settings.walks", "Прогулянки й карти")) {
+                    SettingsLinkRow(
+                        icon = Icons.Filled.CloudDownload,
+                        title = tr("offline.title", "Офлайн-карти"),
+                        subtitle = tr("settings.offline_maps_hint", "Завантажте райони Києва для роботи без інтернету"),
+                        onClick = onOpenOfflineMaps
+                    )
+                    SettingsLinkRow(
+                        icon = Icons.Filled.EmojiEvents,
+                        title = tr("stats.title", "Прогулянки й досягнення"),
+                        subtitle = tr("settings.stats_hint", "Пройдені кілометри, відвідані місця, серії днів"),
+                        onClick = onOpenStats
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    SettingsSwitchRow(
+                        icon = Icons.Filled.TaskAlt,
+                        title = tr("settings.auto_visited", "Автоматично позначати відвідані"),
+                        subtitle = tr("settings.auto_visited_hint", "Місце позначається, коли ви до нього підходите"),
+                        checked = features.autoVisited,
+                        onCheckedChange = { featuresViewModel.set(FeatureSettings.KEY_AUTO_VISITED, it) }
+                    )
+                    if (features.autoVisited) {
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.LocationOn,
+                            title = tr("settings.background_visits", "Навіть із закритим застосунком"),
+                            subtitle = tr(
+                                "settings.background_visits_hint",
+                                "Геозони Google Play: потрібен дозвіл на геолокацію «Дозволити завжди»"
+                            ),
+                            checked = features.backgroundGeofences && featuresViewModel.hasBackgroundLocation(),
+                            onCheckedChange = { enabled ->
+                                when {
+                                    !enabled -> featuresViewModel.set(FeatureSettings.KEY_BACKGROUND_GEOFENCES, false)
+                                    featuresViewModel.hasBackgroundLocation() ->
+                                        featuresViewModel.set(FeatureSettings.KEY_BACKGROUND_GEOFENCES, true)
+                                    else -> showBackgroundLocationRationale = true
+                                }
+                            }
+                        )
+                    }
+                    SettingsSwitchRow(
+                        icon = Icons.Filled.Navigation,
+                        title = tr("settings.background_navigation", "Навігація на заблокованому екрані"),
+                        subtitle = tr(
+                            "settings.background_navigation_hint",
+                            "Маршрут ведеться з вимкненим екраном, прогрес видно у сповіщенні"
+                        ),
+                        checked = features.backgroundNavigation,
+                        onCheckedChange = { featuresViewModel.set(FeatureSettings.KEY_BACKGROUND_NAVIGATION, it) }
+                    )
+                    SettingsSwitchRow(
+                        icon = Icons.Filled.Headphones,
+                        title = tr("settings.audio_narration", "Розповідати про місця на маршруті"),
+                        subtitle = tr("settings.audio_narration_hint", "Аудіогід озвучує кожну точку, до якої ви підходите"),
+                        checked = features.audioNarration,
+                        onCheckedChange = { featuresViewModel.set(FeatureSettings.KEY_AUDIO_NARRATION, it) }
+                    )
+                    SettingsSwitchRow(
+                        icon = Icons.Filled.CameraAlt,
+                        title = tr("settings.ar_recognition", "Розпізнавати пам'ятки в AR"),
+                        subtitle = tr("settings.ar_recognition_hint", "Порівнює вигляд будівель із фото, усе на пристрої"),
+                        checked = features.arImageRecognition,
+                        onCheckedChange = { featuresViewModel.set(FeatureSettings.KEY_AR_IMAGE_RECOGNITION, it) }
+                    )
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsGranted) {
+                        FilledTonalButton(
+                            onClick = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(tr("settings.allow_notifications", "Дозволити сповіщення"), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+
             item(key = "data") {
                 SettingsSection(icon = Icons.Filled.Route, title = tr("settings.data_tools", "Маршрути та дані")) {
                     Text(
@@ -350,7 +476,10 @@ fun SettingsScreen() {
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = tr("settings.features_list", "Карта, рекомендації, події, маршрути, AR-камера, офлайн-режим"),
+                        text = tr(
+                            "settings.features_list",
+                            "Карта, рекомендації, події, маршрути, AR-камера з розпізнаванням і стрілками, аудіогід, віджети, офлайн-карти, досягнення"
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -375,6 +504,41 @@ fun SettingsScreen() {
                 }
             }
         }
+    }
+
+    if (showBackgroundLocationRationale) {
+        AlertDialog(
+            onDismissRequest = { showBackgroundLocationRationale = false },
+            icon = { Icon(Icons.Filled.LocationOn, contentDescription = null) },
+            title = { Text(tr("settings.background_location_title", "Геолокація у фоні")) },
+            text = {
+                Text(
+                    tr(
+                        "settings.background_location_body",
+                        "Щоб позначати відвідані місця, коли Путівник закрито, застосунку потрібен доступ до геолокації «Дозволити завжди». " +
+                            "Координати використовуються лише на пристрої для геозон навколо найближчих місць і нікуди не передаються. " +
+                            "Вимкнути можна будь-коли тут або в налаштуваннях Android."
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBackgroundLocationRationale = false
+                    val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED
+                    if (hasFine) {
+                        backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    } else {
+                        foregroundLocationLauncher.launch(
+                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                        )
+                    }
+                }) { Text(tr("settings.continue", "Продовжити")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBackgroundLocationRationale = false }) { Text(tr("home.cancel", "Скасувати")) }
+            }
+        )
     }
 
     if (showAllModelsDialog) {
@@ -451,6 +615,29 @@ private fun SettingsSwitchRow(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+
+@Composable
+private fun SettingsLinkRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    ListItem(
+        headlineContent = { Text(title, style = MaterialTheme.typography.titleSmall) },
+        supportingContent = { Text(subtitle, style = MaterialTheme.typography.bodySmall) },
+        leadingContent = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+    )
+}
+
+private fun hasNotificationPermission(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
 @Composable
 private fun ModelDownloadStatus(

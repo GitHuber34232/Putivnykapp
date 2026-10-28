@@ -149,6 +149,33 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `visits` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`placeId` INTEGER NOT NULL, `visitedAt` INTEGER NOT NULL, `source` TEXT NOT NULL)"
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_visits_placeId` ON `visits` (`placeId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_visits_visitedAt` ON `visits` (`visitedAt`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `walk_days` (`day` TEXT NOT NULL, `distanceMeters` REAL NOT NULL, " +
+                    "`activeMillis` INTEGER NOT NULL, `routesCompleted` INTEGER NOT NULL, " +
+                    "`firstActivityAt` INTEGER NOT NULL, `lastActivityAt` INTEGER NOT NULL, PRIMARY KEY(`day`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `achievements` (`id` TEXT NOT NULL, `unlockedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `counters` (`name` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`name`))"
+            )
+            // Places marked as visited before statistics existed still count.
+            db.execSQL(
+                "INSERT INTO `visits` (`placeId`, `visitedAt`, `source`) " +
+                    "SELECT `id`, `updatedAt`, 'import' FROM `places` WHERE `isVisited` = 1"
+            )
+        }
+    }
+
     val ALL = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
@@ -157,6 +184,7 @@ object DatabaseMigrations {
         MIGRATION_5_6,
         MIGRATION_6_7,
         MIGRATION_7_8,
-        MIGRATION_8_9
+        MIGRATION_8_9,
+        MIGRATION_9_10
     )
 }

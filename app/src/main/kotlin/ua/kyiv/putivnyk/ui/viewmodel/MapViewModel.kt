@@ -34,9 +34,12 @@ import ua.kyiv.putivnyk.data.model.PlaceSortMode
 import ua.kyiv.putivnyk.data.model.Route
 import ua.kyiv.putivnyk.data.model.RoutePoint
 import ua.kyiv.putivnyk.data.model.TransportMode
+import ua.kyiv.putivnyk.data.repository.AchievementsRepository
+import ua.kyiv.putivnyk.data.repository.FeatureSettings
 import ua.kyiv.putivnyk.data.repository.MapBookmarkRepository
 import ua.kyiv.putivnyk.data.repository.PlaceRepository
 import ua.kyiv.putivnyk.data.repository.RouteRepository
+import ua.kyiv.putivnyk.data.repository.StatsRepository
 import ua.kyiv.putivnyk.data.repository.UserPreferenceRepository
 import ua.kyiv.putivnyk.data.remote.WalkingDirectionsService
 import ua.kyiv.putivnyk.domain.geo.NativeGeoEngine
@@ -44,6 +47,15 @@ import ua.kyiv.putivnyk.domain.usecase.routing.RouteMetricsCalculator
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteNavigationMetrics
 import ua.kyiv.putivnyk.domain.usecase.routing.RouteOptimizer
 import ua.kyiv.putivnyk.domain.usecase.routing.SmartRouteBuilder
+import ua.kyiv.putivnyk.domain.stats.StatsCounters
+import ua.kyiv.putivnyk.map.offline.OfflineRegionsRepository
+import ua.kyiv.putivnyk.navigation.NavigationController
+import ua.kyiv.putivnyk.navigation.NavigationSnapshot
+import ua.kyiv.putivnyk.navigation.NavigationStateStore
+import ua.kyiv.putivnyk.tracking.RouteCompletionRecorder
+import ua.kyiv.putivnyk.tracking.VisitTracker
+import ua.kyiv.putivnyk.tracking.WalkTracker
+import ua.kyiv.putivnyk.widget.WidgetUpdater
 import kotlin.math.pow
 import kotlin.math.max
 import kotlin.math.abs
@@ -58,7 +70,17 @@ class MapViewModel @Inject constructor(
     private val userPreferenceRepository: UserPreferenceRepository,
     private val smartRouteBuilder: SmartRouteBuilder,
     private val routeOptimizer: RouteOptimizer,
-    private val walkingDirectionsService: WalkingDirectionsService
+    private val walkingDirectionsService: WalkingDirectionsService,
+    private val navigationStore: NavigationStateStore,
+    private val navigationController: NavigationController,
+    private val visitTracker: VisitTracker,
+    private val walkTracker: WalkTracker,
+    private val widgetUpdater: WidgetUpdater,
+    private val completionRecorder: RouteCompletionRecorder,
+    private val offlineRegionsRepository: OfflineRegionsRepository,
+    private val statsRepository: StatsRepository,
+    private val achievementsRepository: AchievementsRepository,
+    featureSettings: FeatureSettings
 ) : ViewModel() {
 
     companion object {
@@ -166,6 +188,17 @@ class MapViewModel @Inject constructor(
 
     private val _nextWaypointName = MutableStateFlow<String?>(null)
     val nextWaypointName: StateFlow<String?> = _nextWaypointName
+
+    private val _routeCompleted = MutableStateFlow(false)
+
+    /** The destination of the active route has been reached. */
+    val routeCompleted: StateFlow<Boolean> = _routeCompleted
+
+    /** Downloaded offline areas: inside them the regular map keeps working without internet. */
+    val offlineRegions: StateFlow<List<OfflineRegionsRepository.DownloadedRegion>> = offlineRegionsRepository.regions
+
+    /** Optional features switched in Settings (AR image recognition, narration, ...). */
+    val features: StateFlow<FeatureSettings.Values> = featureSettings.values
 
     private val _poiPromptPlace = MutableStateFlow<Place?>(null)
     val poiPromptPlace: StateFlow<Place?> = _poiPromptPlace
@@ -366,6 +399,7 @@ class MapViewModel @Inject constructor(
 
     init {
         restoreMapState()
+        offlineRegionsRepository.refresh()
 
         viewModelScope.launch {
             val savedRouteId = userPreferenceRepository.getString(MapPreferenceKeys.ACTIVE_ROUTE_ID, "").toLongOrNull()
@@ -376,6 +410,7 @@ class MapViewModel @Inject constructor(
                     _totalRouteDistanceMeters.value = route.distance
                     restoreRouteProgress(savedRouteId)
                     fetchWalkingDirectionsForRoute(route)
+                    navigationController.start(route.id)
                 }
             }
         }
@@ -400,6 +435,9 @@ class MapViewModel @Inject constructor(
                     }
                 } else if (updated == null) {
                     _activeRoute.value = null
+                    _routeCompleted.value = false
+                    navigationStore.publish(null)
+                    navigationController.stop()
                     _fullWalkingRouteGeometry.value = emptyList()
                     _walkingRouteGeometry.value = emptyList()
                     _totalRouteDistanceMeters.value = 0.0
@@ -475,6 +513,7 @@ class MapViewModel @Inject constructor(
                 _activeRoute.value = saved
                 userPreferenceRepository.upsert(MapPreferenceKeys.ACTIVE_ROUTE_ID, savedId.toString())
                 fetchWalkingDirectionsForRoute(saved)
+                navigationController.start(savedId)
             } finally {
                 _isCreatingRoute.value = false
             }
@@ -488,6 +527,7 @@ class MapViewModel @Inject constructor(
             userPreferenceRepository.upsert(MapPreferenceKeys.ACTIVE_ROUTE_ID, routeId.toString())
             restoreRouteProgress(routeId)
             fetchWalkingDirectionsForRoute(route)
+            navigationController.start(routeId)
         }
     }
 
@@ -509,6 +549,9 @@ class MapViewModel @Inject constructor(
     private fun clearActiveRouteState(resetProgress: Boolean) {
         val routeId = _activeRoute.value?.id
         _activeRoute.value = null
+        _routeCompleted.value = false
+        navigationStore.publish(null)
+        navigationController.stop()
         walkingDirectionsJob?.cancel()
         rerouteJob?.cancel()
         routeProgressJob?.cancel()
@@ -545,6 +588,7 @@ class MapViewModel @Inject constructor(
                 userPreferenceRepository.upsert(MapPreferenceKeys.ACTIVE_ROUTE_ID, pendingId.toString())
                 restoreRouteProgress(pendingId)
                 fetchWalkingDirectionsForRoute(route)
+                navigationController.start(pendingId)
             }
         }
     }
@@ -619,11 +663,18 @@ class MapViewModel @Inject constructor(
         _visibleBoundsRaw.value = bounds
     }
 
-    fun updateUserLocation(latitude: Double, longitude: Double, bearing: Float = -1f, accuracy: Float = Float.MAX_VALUE) {
+    fun updateUserLocation(
+        latitude: Double,
+        longitude: Double,
+        bearing: Float = -1f,
+        accuracy: Float = Float.MAX_VALUE,
+        fixTimeMillis: Long = System.currentTimeMillis()
+    ) {
         _userLocation.value = MapCenter(latitude, longitude)
         _hasUserLocation.value = true
         if (bearing >= 0f) _userBearing.value = bearing
         lastGpsAccuracy = accuracy
+        feedTrackers(latitude, longitude, accuracy, fixTimeMillis)
 
         val now = System.currentTimeMillis()
         if (!lastLocationLat.isNaN() && lastLocationTimestamp > 0L) {
@@ -933,6 +984,8 @@ class MapViewModel @Inject constructor(
     private fun clearRouteProgress(routeId: Long) {
         viewModelScope.launch {
             userPreferenceRepository.deleteByKey("route.progress.$routeId")
+            // Walking the same route again counts as a new completion.
+            completionRecorder.reset(routeId)
         }
         _currentWaypointIndex.value = 0
         _remainingDistance.value = 0.0
@@ -1034,13 +1087,14 @@ class MapViewModel @Inject constructor(
         }
 
         if (currentIdx >= allPoints.lastIndex || remainingRouteDistance <= 8.0) {
-
+            _currentWaypointIndex.value = allPoints.lastIndex
             _remainingDistance.value = 0.0
             _remainingMinutes.value = 0
             _routeProgressFraction.value = 1f
             _distanceToNextWaypoint.value = 0.0
             _nextWaypointName.value = null
             _walkingRouteGeometry.value = emptyList()
+            publishNavigationSnapshot(completed = true)
             return
         }
 
@@ -1061,6 +1115,96 @@ class MapViewModel @Inject constructor(
         )
         _distanceToNextWaypoint.value = distToNext
         _nextWaypointName.value = allPoints[nextIdx].name
+        publishNavigationSnapshot(completed = false)
+    }
+
+    /** Shares the progress with the background service, the lock-screen notification and narration. */
+    private fun publishNavigationSnapshot(completed: Boolean) {
+        val route = _activeRoute.value ?: return
+        _routeCompleted.value = completed
+        val waypoints = buildList {
+            add(route.startPoint)
+            addAll(route.waypoints)
+            add(route.endPoint)
+        }
+        navigationStore.publish(
+            NavigationSnapshot(
+                routeId = route.id,
+                routeName = route.name,
+                transportMode = route.transportMode,
+                waypoints = waypoints,
+                geometry = _fullWalkingRouteGeometry.value,
+                remainingGeometry = _walkingRouteGeometry.value,
+                currentIndex = _currentWaypointIndex.value.coerceIn(0, waypoints.lastIndex),
+                distanceToNextMeters = _distanceToNextWaypoint.value,
+                remainingMeters = _remainingDistance.value,
+                remainingMinutes = _remainingMinutes.value,
+                totalMeters = _totalRouteDistanceMeters.value,
+                progress = _routeProgressFraction.value,
+                completed = completed
+            )
+        )
+    }
+
+    /**
+     * Walk statistics, automatic visits and the "Nearby" widget follow the map's own fixes;
+     * while the navigation service runs it feeds the trackers itself (same fixes, by fix time).
+     */
+    private fun feedTrackers(latitude: Double, longitude: Double, accuracy: Float, fixTimeMillis: Long) {
+        val driving = _activeRoute.value?.transportMode == TransportMode.DRIVING
+        val serviceFeeds = navigationStore.serviceRunning.value
+        viewModelScope.launch {
+            if (!serviceFeeds) {
+                runCatching { walkTracker.onLocation(latitude, longitude, accuracy, fixTimeMillis, driving) }
+                runCatching { visitTracker.onLocation(latitude, longitude, accuracy, fixTimeMillis) }
+            }
+            runCatching { widgetUpdater.onLocation(latitude, longitude) }
+        }
+    }
+
+    /** Called while the map is visible: it computes progress itself instead of the service. */
+    fun setMapVisible(visible: Boolean) {
+        navigationStore.setMapTracking(visible)
+        if (visible) adoptBackgroundProgress()
+    }
+
+    /** Stops reached while the map was closed (tracked by the service) are kept. */
+    private fun adoptBackgroundProgress() {
+        val route = _activeRoute.value ?: return
+        val snapshot = navigationStore.snapshot.value ?: return
+        if (snapshot.routeId != route.id || snapshot.currentIndex <= _currentWaypointIndex.value) return
+        _currentWaypointIndex.value = snapshot.currentIndex
+        persistRouteProgress(route.id, snapshot.currentIndex)
+        if (_hasUserLocation.value) {
+            val user = _userLocation.value
+            scheduleRouteProgressUpdate(user.latitude, user.longitude)
+        }
+    }
+
+    /** A landmark recognised by its appearance in the AR camera (counted for achievements). */
+    fun onLandmarkRecognized(place: Place) {
+        viewModelScope.launch {
+            runCatching {
+                statsRepository.increment(StatsCounters.AR_RECOGNITIONS)
+                achievementsRepository.evaluate()
+            }
+        }
+    }
+
+    /** Places still ahead on the active route, for the audio guide. */
+    fun upcomingRouteStops(): List<RoutePoint> {
+        val route = _activeRoute.value ?: return emptyList()
+        val waypoints = buildList {
+            add(route.startPoint)
+            addAll(route.waypoints)
+            add(route.endPoint)
+        }
+        return waypoints.drop((_currentWaypointIndex.value + 1).coerceAtMost(waypoints.size))
+    }
+
+    override fun onCleared() {
+        navigationStore.setMapTracking(false)
+        super.onCleared()
     }
 
     private fun estimateRemainingMinutes(remainingDistanceMeters: Double): Int {

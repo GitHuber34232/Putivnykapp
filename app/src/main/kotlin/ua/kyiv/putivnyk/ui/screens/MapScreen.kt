@@ -46,6 +46,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ua.kyiv.putivnyk.ui.ar.ArExploreScreen
+import ua.kyiv.putivnyk.ui.ar.ArNavigationInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -62,6 +63,7 @@ import ua.kyiv.putivnyk.data.model.Place
 import ua.kyiv.putivnyk.data.model.PlaceCategory
 import ua.kyiv.putivnyk.data.model.PlaceSortMode
 import ua.kyiv.putivnyk.data.model.Route
+import ua.kyiv.putivnyk.data.model.RoutePoint
 import ua.kyiv.putivnyk.data.model.TransportMode
 import ua.kyiv.putivnyk.ui.i18n.trCategory
 import ua.kyiv.putivnyk.ui.i18n.trDynamic
@@ -78,9 +80,11 @@ import ua.kyiv.putivnyk.ui.viewmodel.MapViewModel
 fun MapScreen(
     startRouteBuilder: Boolean = false,
     onOpenPlaceDetails: (Long) -> Unit = {},
+    onPlayRouteStories: (List<RoutePoint>) -> Unit = {},
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val places by viewModel.placesOnMap.collectAsState()
     val selectedPlace by viewModel.selectedPlace.collectAsState()
     val showOnlyFavorites by viewModel.showOnlyFavorites.collectAsState()
@@ -105,6 +109,10 @@ fun MapScreen(
     val nextWaypointName by viewModel.nextWaypointName.collectAsState()
     val poiPromptPlace by viewModel.poiPromptPlace.collectAsState()
     val isRerouting by viewModel.isRerouting.collectAsState()
+    val routeWaypoints by viewModel.routeWaypoints.collectAsState()
+    val routeCompleted by viewModel.routeCompleted.collectAsState()
+    val offlineRegions by viewModel.offlineRegions.collectAsState()
+    val features by viewModel.features.collectAsState()
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val listState = rememberLazyListState()
@@ -122,6 +130,38 @@ fun MapScreen(
         }
         onDispose {
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    // While the map is visible it computes route progress; otherwise the navigation service does.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> viewModel.setMapVisible(true)
+                Lifecycle.Event.ON_PAUSE -> viewModel.setMapVisible(false)
+                else -> Unit
+            }
+        }
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) viewModel.setMapVisible(true)
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.setMapVisible(false)
+        }
+    }
+
+    // The navigation progress (Live Update) needs the notification permission on Android 13+.
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    var notificationPermissionAsked by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(activeRoute?.id) {
+        if (activeRoute == null || notificationPermissionAsked) return@LaunchedEffect
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionAsked = true
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -144,7 +184,12 @@ fun MapScreen(
             offlineByConnectivity = true
         }
     }
-    val showOfflineMap = useOfflineFallback || offlineByConnectivity
+    // Areas downloaded in "Offline maps" keep the detailed map working without a connection.
+    val coveredByDownload = offlineRegions.any { region ->
+        region.isComplete && region.bounds.contains(mapCenter.latitude, mapCenter.longitude)
+    }
+    val showOfflineMap = useOfflineFallback || (offlineByConnectivity && !coveredByDownload)
+    val showOfflineBadge = showOfflineMap || offlineByConnectivity
 
     val snackbarHostState = remember { SnackbarHostState() }
     val msgLocationUnavailable = tr(
@@ -200,8 +245,8 @@ fun MapScreen(
 
     ObserveGpsLocation(
         context = context,
-        onLocationChanged = { latitude, longitude, bearing, accuracy ->
-            viewModel.updateUserLocation(latitude, longitude, bearing, accuracy)
+        onLocationChanged = { latitude, longitude, bearing, accuracy, fixTime ->
+            viewModel.updateUserLocation(latitude, longitude, bearing, accuracy, fixTime)
         },
         onSatellitesChanged = { usedCount, totalCount ->
             viewModel.updateGpsSatellites(usedCount, totalCount)
@@ -464,6 +509,12 @@ fun MapScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                IconButton(onClick = { onPlayRouteStories(viewModel.upcomingRouteStops()) }) {
+                                    Icon(
+                                        Icons.Filled.Headphones,
+                                        contentDescription = tr("audio.route_stories", "Слухати історії маршруту")
                                     )
                                 }
                                 IconButton(onClick = { viewModel.deactivateRoute() }) {
@@ -799,7 +850,7 @@ fun MapScreen(
             }
 
             AnimatedVisibility(
-                visible = showOfflineMap,
+                visible = showOfflineBadge,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(
@@ -820,8 +871,16 @@ fun MapScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.Filled.CloudOff, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text(tr("map.offline_map", "Офлайн-карта"), style = MaterialTheme.typography.labelLarge)
+                        Icon(
+                            if (showOfflineMap) Icons.Filled.CloudOff else Icons.Filled.CloudDone,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            if (showOfflineMap) tr("map.offline_map", "Офлайн-карта")
+                            else tr("map.offline_area", "Завантажений район"),
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
                 }
             }
@@ -863,6 +922,18 @@ fun MapScreen(
                 decorFitsSystemWindows = false
             )
         ) {
+            val arNavigation = activeRoute?.let {
+                val nextIndex = currentWaypointIndex + 1
+                ArNavigationInfo(
+                    path = routeLinePoints.ifEmpty { routeWaypoints.drop(nextIndex.coerceAtMost(routeWaypoints.size)) },
+                    nextStop = routeWaypoints.getOrNull(nextIndex),
+                    nextStopName = nextWaypointName,
+                    distanceToNextMeters = distanceToNextWaypoint,
+                    remainingMeters = remainingDistance,
+                    remainingMinutes = remainingMinutes,
+                    completed = routeCompleted
+                )
+            }
             ArExploreScreen(
                 places = arPlaces,
                 hasUserLocation = hasUserLocation,
@@ -877,7 +948,10 @@ fun MapScreen(
                     showArMode = false
                     viewModel.selectPlace(place)
                     viewModel.createRouteToPlace(place)
-                }
+                },
+                navigation = arNavigation,
+                imageRecognition = features.arImageRecognition,
+                onLandmarkRecognized = { place -> viewModel.onLandmarkRecognized(place) }
             )
         }
     }
@@ -1061,7 +1135,7 @@ private enum class MapAdaptiveMode {
 @Composable
 private fun ObserveGpsLocation(
     context: Context,
-    onLocationChanged: (Double, Double, Float, Float) -> Unit,
+    onLocationChanged: (Double, Double, Float, Float, Long) -> Unit,
     onSatellitesChanged: (Int, Int) -> Unit = { _, _ -> }
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -1103,7 +1177,7 @@ private fun ObserveGpsLocation(
             override fun onLocationChanged(location: Location) {
                 val bearing = if (location.hasBearing()) location.bearing else -1f
                 val accuracy = if (location.hasAccuracy()) location.accuracy else Float.MAX_VALUE
-                onLocationChanged(location.latitude, location.longitude, bearing, accuracy)
+                onLocationChanged(location.latitude, location.longitude, bearing, accuracy, location.time)
             }
 
             @Deprecated("Deprecated in API 29")
@@ -1134,7 +1208,7 @@ private fun ObserveGpsLocation(
                 bestLastKnown?.let {
                     val bearing = if (it.hasBearing()) it.bearing else -1f
                     val accuracy = if (it.hasAccuracy()) it.accuracy else Float.MAX_VALUE
-                    onLocationChanged(it.latitude, it.longitude, bearing, accuracy)
+                    onLocationChanged(it.latitude, it.longitude, bearing, accuracy, it.time)
                 }
             }
         }

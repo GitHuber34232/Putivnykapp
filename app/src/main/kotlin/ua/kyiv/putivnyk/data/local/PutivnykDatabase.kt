@@ -7,8 +7,11 @@ import ua.kyiv.putivnyk.data.local.dao.LocalizationDao
 import ua.kyiv.putivnyk.data.local.dao.MapBookmarkDao
 import ua.kyiv.putivnyk.data.local.dao.PlaceDao
 import ua.kyiv.putivnyk.data.local.dao.RouteDao
+import ua.kyiv.putivnyk.data.local.dao.StatsDao
 import ua.kyiv.putivnyk.data.local.dao.SyncStateDao
 import ua.kyiv.putivnyk.data.local.dao.UserPreferenceDao
+import ua.kyiv.putivnyk.data.local.entity.AchievementEntity
+import ua.kyiv.putivnyk.data.local.entity.CounterEntity
 import ua.kyiv.putivnyk.data.local.entity.LocalizedStringEntity
 import ua.kyiv.putivnyk.data.local.entity.MapBookmarkEntity
 import ua.kyiv.putivnyk.data.local.entity.PlaceEntity
@@ -16,6 +19,8 @@ import ua.kyiv.putivnyk.data.local.entity.PlaceFtsEntity
 import ua.kyiv.putivnyk.data.local.entity.RouteEntity
 import ua.kyiv.putivnyk.data.local.entity.SyncStateEntity
 import ua.kyiv.putivnyk.data.local.entity.UserPreferenceEntity
+import ua.kyiv.putivnyk.data.local.entity.VisitEntity
+import ua.kyiv.putivnyk.data.local.entity.WalkDayEntity
 
 @Database(
     entities = [
@@ -25,9 +30,13 @@ import ua.kyiv.putivnyk.data.local.entity.UserPreferenceEntity
         MapBookmarkEntity::class,
         LocalizedStringEntity::class,
         UserPreferenceEntity::class,
-        SyncStateEntity::class
+        SyncStateEntity::class,
+        VisitEntity::class,
+        WalkDayEntity::class,
+        AchievementEntity::class,
+        CounterEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -38,4 +47,5 @@ abstract class PutivnykDatabase : RoomDatabase() {
     abstract fun localizationDao(): LocalizationDao
     abstract fun userPreferenceDao(): UserPreferenceDao
     abstract fun syncStateDao(): SyncStateDao
+    abstract fun statsDao(): StatsDao
 }
